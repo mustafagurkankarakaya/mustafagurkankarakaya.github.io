@@ -8,4 +8,4 @@ tags: [Hello World]     # TAG names should always be lowercase
 # Test
 
 
-![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/cat.jpg)
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/1.webp)
