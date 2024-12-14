@@ -14,3 +14,5 @@ tags: [Forensic]     # TAG names should always be lowercase
 # python vol.py -f /root/cridex.vmem imageinfo
 
 komutunu yazarak imaj hakkında daha fazla bilgi edinelim -f parametresi kullanacağımız imaj dosyası imageinfo ise volatility aracı için kullanmak istediğimiz plugindir.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V1.webp)
