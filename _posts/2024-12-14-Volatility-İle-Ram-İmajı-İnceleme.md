@@ -80,7 +80,7 @@ komutu çalıştırılmış cmd komutlarını listelemeyi sağlar.
 
 bir işlemin ortam değişkenlerinin gösterilmesini sağlar. CPU’ların sayısını donanım mimarisini işlemin geçerli olduğu dizini oturum adını bilgisayar adını gösterir.Üstte yapmış olduğumuz kdbscan plugini envars pluginine göre daha güvenilir sonuçlar vermektedir.
 
-![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V9.webp)
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V10.webp)
 
 
 python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 connscan
@@ -88,15 +88,15 @@ python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 connscan
 komutu sonlandırılmış ya da aktif olan bağlantıları bulmamızı sağlar.
 
 
-![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V10.webp)
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V11.webp)
 
 
 RAM imajının ait olduğu windows makinenin local IP adresi 172.16.112.128 olarak görülmüştür.Bu makineye remote olarak 2 farklı IP den 1037 ve 1038 portlarına bağlantı yapılmış online olarak bu IP lerin whois bilgilerine bakıp adres bilgisi,telefon numarası bilgisi,hedef alan adının kullanmış olduğu IP adresleri,email adres bilgisi gibi verileri öğrenebiliriz.
 
 # 125.19.103.198 IP si için whois bilgileri
 
-![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V11.webp)
-
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V12.webp)
 
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V13.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V14.webp)
