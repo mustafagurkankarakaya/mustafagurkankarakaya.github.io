@@ -121,6 +121,85 @@ bu komut sistemde çalışan hizmetleri verir.
 
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V19.webp)
 
+# RAM İMAJINDAKİ KÖTÜ AMAÇLI YAZILIMIN BULUNMASI
+
+Bunun için malfind pluginini kullanacağız.
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 malfind | grep 5 ‘MZ’
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V20.webp)
+
+Malfind plugini iki tane malware buldu birincisi PID numarası 1484 olan explorer.exe diğeride PID numarası 1640 olan reader_sl.exe .Şimdi bir dosya oluşturup bu malwareleri çekelim ve virus totale yükleyerek malwareleri inceleyelim.
+
+mkdir dump
+
+komutuyla klasör oluşturduk.
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 malfind — dump-dir=dump/
+
+komutuyla malwareleri oluşturduğumuz /dump klasörüne içine attık.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V21.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V22.webp)
+
+Şimdi dosyanın md5sum değerini alıp virus totale yükleyebiliriz.
+
+md5sum process.0x81e7bda0.0x3d0000.dmp
+
+komutuyla md5sum değerini alalım.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V22.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V23.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V24.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V25.webp)
 
 
+PID değeri 1484 ve 1640 olan bu iki processin mutex objelerini bulmaya çalışalım.Bunun için violitilitynin handles pluginini kullanalım.
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 handles -t Mutant -p1484 -s
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V26.webp)
+
+
+details sekmesinde çıkan mutex objelerini googleda arattığımız zaman bu objelerin bazı malwarelerin içerisinde de rastlanıldığını görürüz.
+
+Bu processlerin VAD segmentlerini çekelim ve ‘strings’ komutuyla içeriğini inceleyerek ilginç bir şey var mı bakalım.
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 vaddump -p1484 — dump-dir=dump2/
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V27.webp)
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 vaddump -p1640— dump-dir=dump3/
+
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V29.webp)
+
+
+strings 1640.dmp | less
+
+komutunu yazdığımız zaman PID değeri 1640 olan process üzerinden banka domain sayfalarını görüntülüyoruz.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V30.webp)
+
+PID değeri 1484 olan process için içinde önceden bulduğumuz remote olarak bağlanan IP değerlerini grep ile bulup inceleyelim.
+
+strings -af * | grep “125.19.103.198”
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V31.webp)
+
+
+strings -af * | grep “41.168.5.140”
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V32.webp)
+
+
+String komutunun sonucunda bu IP lerin portunu ve bu porttaki dizin bilgisinide(/zb/v_01_a/in/) öğrendik.Greple bu dizin bilgisini de arayıp dizinle ilgili başka IP ler var mı diye kontrol edelim.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V33.webp)
+
+Bu dizinle bağlantılı olarak 188.40.0.138 IP sini ve cp.php dosyasını da bulmuş olduk.
 
