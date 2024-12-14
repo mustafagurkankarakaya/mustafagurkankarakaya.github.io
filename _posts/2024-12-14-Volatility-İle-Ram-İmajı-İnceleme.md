@@ -100,3 +100,21 @@ RAM imajının ait olduğu windows makinenin local IP adresi 172.16.112.128 olar
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V13.webp)
 
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V14.webp)
+
+# 41.168.5.140 IP si için whois bilgileri
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V15.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V16.webp)
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V17.webp)
+
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 sockets
+
+bu komut TCP ve UDP bağlantılarını görmemizi sağlar.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V18.webp)
+
+
+
+
