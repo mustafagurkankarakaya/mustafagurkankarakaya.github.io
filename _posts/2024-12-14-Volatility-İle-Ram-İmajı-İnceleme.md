@@ -115,6 +115,12 @@ bu komut TCP ve UDP bağlantılarını görmemizi sağlar.
 
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V18.webp)
 
+python vol.py -f /root/cridex.vmem — profile=WinXPSP2x86 svcscan
+
+bu komut sistemde çalışan hizmetleri verir.
+
+![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V19.webp)
+
 
 
 
