@@ -96,5 +96,7 @@ RAM imajının ait olduğu windows makinenin local IP adresi 172.16.112.128 olar
 # 125.19.103.198 IP si için whois bilgileri
 
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V11.webp)
+
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V12.webp)
+
 ![resim]({{ site.url }}{{ site.baseurl }}/assets/img/posts/V13.webp)
