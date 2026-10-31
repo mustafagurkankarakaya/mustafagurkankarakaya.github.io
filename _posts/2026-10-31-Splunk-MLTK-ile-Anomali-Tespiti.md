@@ -67,15 +67,15 @@ index=auth action=success earliest=-30d@d latest=@d
     dist=auto threshold=0.01 show_density=true
 ```
 
+![Görselleştirme sekmesinde öğrenilen dağılım]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-density.svg)
+_Görselleştirme sekmesinde bir kullanıcı için öğrenilen yoğunluk; kuyruğa düşen değerler aykırı kabul edilir._
+
 Parametreler, anomali tespitinde doğrudan sonucu belirleyen ayarlardır:
 
 - **`by user`** — asıl belirleyici seçim budur. Her kullanıcı için ayrı bir dağılım fit edilir; bir yönetici hesabının "normal"i ile bir son kullanıcının "normal"i aynı olmak zorunda değildir. En fazla 5 alanla gruplama yapılabilir; varsayılan 1024 grup sınırı `max_groups` ile artırılabilir.
 - **`dist=auto`** — MLTK dört dağılımı (`norm`, `expon`, `gaussian_kde`, `beta`) dener ve en iyi uyanı seçer. Verinin dağılımı bilinmiyorsa `auto` güvenli bir başlangıçtır. Sayım verileri genellikle sağa çarpık olduğundan, bilinçli bir tercihle `dist=expon` çoğu zaman hem hızlı hem kararlı sonuç verir.
 - **`threshold=0.01`** — dağılımın hangi oranının aykırı sayılacağını belirler (varsayılan %1). Olasılık yoğunluğu en düşük %1'lik bölgeye düşen her nokta `IsOutlier=1` değerini alır. Bu değer, doğrudan yanlış pozitif oranını etkiler.
 - **`show_density=true`** — çıktıya `ProbabilityDensity` alanını ekler. Yalnızca 0/1 bayrağı değil, "ne ölçüde beklenmedik" bilgisi de gerekiyorsa (RBA puanı için gereklidir) bu seçenek açılmalıdır.
-
-![Görselleştirme sekmesinde öğrenilen dağılım]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-density.svg)
-_Görselleştirme sekmesinde bir kullanıcı için öğrenilen yoğunluk ve eşik; kuyruğa düşen değerler aykırı kabul edilir._
 
 ## 3. Modeli incelemek: `summary`
 
@@ -85,10 +85,10 @@ Model eğitildikten sonra doğrudan canlıya alınmamalı, önce içeriği incel
 | summary app:auth_baseline
 ```
 
-Çıktıda her grup (kullanıcı) için seçilen dağılım tipi (`type`), ortalama ve standart sapma, kardinalite ve `wasserstein` / `kolmogorov_smirnov` mesafesi yer alır. Mesafe metriği, öğrenilen dağılımın gerçek veriye ne kadar uyduğunu gösterir; değerin yüksek olması o grup için modelin zayıf olduğuna işaret eder ve ilgili kullanıcının ayrı değerlendirilmesini gerektirebilir. Deterministik davranan servis hesaplarının dağılımı dar ve sivri çıkar; bu beklenen bir sonuçtur ve en küçük sapmaların yakalanmasını sağlar.
-
 ![İstatistik sekmesinde summary çıktısı]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-summary.svg)
 _İstatistik sekmesinde `summary` çıktısı; her kullanıcı için seçilen dağılım tipi ve uyum mesafesi._
+
+Çıktıda her grup (kullanıcı) için seçilen dağılım tipi (`type`), ortalama ve standart sapma, kardinalite ve `wasserstein` / `kolmogorov_smirnov` mesafesi yer alır. Mesafe metriği, öğrenilen dağılımın gerçek veriye ne kadar uyduğunu gösterir; değerin yüksek olması o grup için modelin zayıf olduğuna işaret eder ve ilgili kullanıcının ayrı değerlendirilmesini gerektirebilir. Deterministik davranan servis hesaplarının dağılımı dar ve sivri çıkar; bu beklenen bir sonuçtur ve en küçük sapmaların yakalanmasını sağlar.
 
 ## 4. Canlıya almak: `apply`
 
@@ -104,12 +104,20 @@ index=auth action=success earliest=-1h@h latest=now
 | table _time, user, login_count, "IsOutlier(login_count)", "ProbabilityDensity(login_count)"
 ```
 
-Alan adlarındaki tek tırnaklara dikkat edilmelidir: `IsOutlier(login_count)` parantez içerdiğinden SPL'de tek tırnakla sarılması gerekir, aksi halde ayrıştırıcı hata verir. Aşağıdaki çıktıda `svc_backup` hesabı normalde 2–3 bandındayken 27 değerine çıkmış ve `ProbabilityDensity` değeri belirgin biçimde düşmüştür:
-
 ![İstatistik sekmesinde apply sonuçları]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-apply.svg)
 _İstatistik sekmesinde `apply` çıktısı; `ProbabilityDensity` ne kadar küçükse değer o kadar beklenmediktir._
 
+Alan adlarındaki tek tırnaklara dikkat edilmelidir: `IsOutlier(login_count)` parantez içerdiğinden SPL'de tek tırnakla sarılması gerekir, aksi halde ayrıştırıcı hata verir. Yukarıdaki çıktıda `svc_backup` hesabı normalde 2–3 bandındayken 27 değerine çıkmış ve `ProbabilityDensity` değeri belirgin biçimde düşmüştür.
+
 Aynı sonuç zaman ekseninde görselleştirildiğinde durum daha net izlenir — mavi çizgi gerçek trafiği, kırmızı noktalar modelin aykırı olarak işaretlediği saatleri gösterir:
+
+```spl
+index=auth action=success earliest=-3d@d latest=now
+| bin _time span=1h
+| stats count AS login_count by _time, user
+| apply auth_baseline
+| timechart span=1h sum(login_count) AS login_count, sum('IsOutlier(login_count)') AS anomalies
+```
 
 ![Görselleştirme sekmesinde anomaliler]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-timeline.svg)
 _Görselleştirme sekmesinde beklenen aralığın (gölgeli bant) dışına taşan saatler anomali olarak işaretlenmiştir._

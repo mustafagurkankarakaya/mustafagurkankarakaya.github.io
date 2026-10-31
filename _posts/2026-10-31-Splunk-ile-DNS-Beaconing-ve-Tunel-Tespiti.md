@@ -54,12 +54,19 @@ tag=dns
 | sort cv
 ```
 
-Buradaki iki eşik belirleyicidir: `query_count > 50` yeterli örneklem için, `cv < 0.1` ise düzenlilik için. Değerler ortamınıza göre ayarlanır — gürültülü ağlarda `cv < 0.05` daha isabetli olabilir.
-
 ![İstatistik sekmesinde beacon adayları]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-dns-beacon.svg)
 _Düşük `cv` değerleri sabit aralığa, yani jitter'sız otomatik trafiğe işaret eder._
 
+Buradaki iki eşik belirleyicidir: `query_count > 50` yeterli örneklem için, `cv < 0.1` ise düzenlilik için. Değerler ortamınıza göre ayarlanır — gürültülü ağlarda `cv < 0.05` daha isabetli olabilir.
+
 Aynı iki varlığı zaman ekseninde yan yana koyduğunuzda fark gözle görülür hale gelir: normal trafik düzensiz kümeler halindeyken, beacon trafiği eşit aralıklı bir tarak gibi dizilir.
+
+```spl
+tag=dns (src="10.4.12.9" OR src="10.4.33.21")
+| ut_parse(query) | rename ut_domain AS parent_domain
+| eval lane = if(parent_domain="c2-sync.xyz", "beacon", "normal")
+| timechart span=5m count by lane
+```
 
 ![Görselleştirme sekmesinde sorgu zaman damgaları]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-dns-timeline.svg)
 _Alt satırdaki eşit aralık, bir zamanlayıcının imzasıdır; üst satır tipik kullanıcı trafiğidir._
@@ -84,12 +91,20 @@ tag=dns
 | sort - avg_entropy
 ```
 
-Burada üç sinyali birleştiriyoruz: yüksek benzersiz alt alan sayısı (`dc(query)`), uzun ortalama ad ve yüksek ortalama entropi. Tek başına her biri yanıltıcı olabilir; birlikte güçlü bir göstergedir.
-
 ![İstatistik sekmesinde tünel adayları]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-dns-tunnel.svg)
 _Yüksek alt alan çeşitliliği, uzun ad ve yüksek entropinin bir arada görülmesi tünellemenin tipik imzasıdır._
 
+Burada üç sinyali birleştiriyoruz: yüksek benzersiz alt alan sayısı (`dc(query)`), uzun ortalama ad ve yüksek ortalama entropi. Tek başına her biri yanıltıcı olabilir; birlikte güçlü bir göstergedir.
+
 İki boyutu — ortalama uzunluk ve entropi — bir dağılım grafiğinde çizdiğinizde, meşru alan adları sol altta toplanırken tünel adayları sağ üst köşede ayrışır:
+
+```spl
+tag=dns
+| ut_parse(query) | rename ut_domain AS parent_domain
+| eval qlen = len(query), entropy = ut_shannon(query)
+| stats avg(qlen) AS avg_qlen, avg(entropy) AS avg_entropy by parent_domain
+| table parent_domain, avg_qlen, avg_entropy
+```
 
 ![Görselleştirme sekmesinde uzunluk/entropi dağılımı]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-dns-entropy.svg)
 _Normal trafik düşük uzunluk ve orta entropide kümelenir; tünel adayları sağ üst bölgeye düşer._
