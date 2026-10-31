@@ -38,6 +38,9 @@ jobs:
       - name: Son siber güvenlik haberlerini çek
         continue-on-error: true
         run: python tools/fetch_news.py || true
+      - name: CISA KEV kataloğunu çek
+        continue-on-error: true
+        run: python tools/fetch_kev.py || true
       - run: bundle exec jekyll b -d _site --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production

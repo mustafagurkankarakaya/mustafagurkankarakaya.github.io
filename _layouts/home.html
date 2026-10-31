@@ -2,6 +2,26 @@
 layout: default
 ---
 <main id="content">
+  {%- assign kev = site.data.kev -%}
+  {%- if kev.items and kev.items.size > 0 %}
+  <aside class="kev" aria-label="CISA KEV — aktif sömürülen zafiyetler">
+    <span class="kev-tag" aria-hidden="true">CISA KEV</span>
+    <div class="kev-view">
+      <div class="kev-track">
+        {%- for pass in (1..2) -%}
+        {%- for v in kev.items -%}
+        <a class="kev-item{% if v.ransomware %} rw{% endif %}" href="https://nvd.nist.gov/vuln/detail/{{ v.cve }}" target="_blank" rel="noopener noreferrer"{% if pass == 2 %} aria-hidden="true" tabindex="-1"{% endif %}>
+          <span class="cve">{{ v.cve }}</span>
+          <span class="vp">{{ v.vendor | escape }}{% if v.product %} {{ v.product | escape }}{% endif %}</span>
+          {%- if v.ransomware %}<span class="flag">RW</span>{%- endif %}
+          <span class="da">{{ v.dateAdded }}</span>
+        </a>
+        {%- endfor -%}
+        {%- endfor -%}
+      </div>
+    </div>
+  </aside>
+  {%- endif %}
   <section class="hero">
     <div class="hero-copy">
       <p class="prompt" aria-hidden="true"><span class="p">gurkan@soc:~$</span> whoami</p>

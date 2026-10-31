@@ -297,3 +297,33 @@ body::after{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;
   .feed-item .feed-src,.feed-item time{display:inline}
   .feed-title{margin-top:4px}
 }
+
+/* ---------- CISA KEV şeridi (ticker) ---------- */
+.kev{position:relative;display:flex;align-items:stretch;margin:0 0 10px;
+  border:1px solid var(--line);background:var(--panel);font-size:.8rem;overflow:hidden}
+.kev-tag{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;padding:9px 14px;
+  background:var(--panel2);border-right:1px solid var(--line);color:var(--glow);
+  font-weight:700;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.kev-tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+@media (prefers-reduced-motion:no-preference){.kev-tag::before{animation:blink 1.4s steps(1) infinite}}
+.kev-view{flex:1 1 auto;min-width:0;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.kev-track{display:inline-flex;white-space:nowrap;will-change:transform}
+@media (prefers-reduced-motion:no-preference){.kev-track{animation:marquee 110s linear infinite}}
+.kev:hover .kev-track,.kev:focus-within .kev-track{animation-play-state:paused}
+.kev-item{display:inline-flex;align-items:center;gap:9px;padding:9px 0;margin-right:2.6rem;
+  text-decoration:none;color:var(--muted)}
+.kev-item::before{content:"◆";margin-right:2.6rem;color:var(--line2);font-size:.7rem}
+.kev-item .cve{color:var(--glow);font-weight:700}
+.kev-item.rw .cve{color:var(--red);text-shadow:0 0 8px rgba(255,92,92,.5)}
+.kev-item .vp{color:var(--muted)}
+.kev-item .da{color:var(--dim);font-variant-numeric:tabular-nums}
+.kev-item .flag{color:var(--red);border:1px solid var(--red);font-size:.64rem;font-weight:700;
+  letter-spacing:.05em;padding:0 5px;line-height:1.5}
+.kev-item:hover .cve{text-decoration:underline}
+@media (max-width:640px){
+  .kev-tag{padding:9px 10px;font-size:.64rem}
+  .kev-item{margin-right:1.8rem}
+  .kev-item::before{margin-right:1.8rem}
+}
