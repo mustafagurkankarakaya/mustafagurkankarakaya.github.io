@@ -12,3 +12,6 @@ Forensic:
 Tarih:
   color: green
   code: HIST
+Blue Team:
+  color: purple
+  code: BLUE
