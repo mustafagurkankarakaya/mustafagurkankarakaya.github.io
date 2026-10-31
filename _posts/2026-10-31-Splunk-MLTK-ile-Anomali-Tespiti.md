@@ -74,7 +74,7 @@ Parametreler, anomali tespitinde doğrudan sonucu belirleyen ayarlardır:
 
 - **`by user`** — asıl belirleyici seçim budur. Her kullanıcı için ayrı bir dağılım fit edilir; bir yönetici hesabının "normal"i ile bir son kullanıcının "normal"i aynı olmak zorunda değildir. En fazla 5 alanla gruplama yapılabilir; varsayılan 1024 grup sınırı `max_groups` ile artırılabilir.
 - **`dist=auto`** — MLTK dört dağılımı (`norm`, `expon`, `gaussian_kde`, `beta`) dener ve en iyi uyanı seçer. Verinin dağılımı bilinmiyorsa `auto` güvenli bir başlangıçtır. Sayım verileri genellikle sağa çarpık olduğundan, bilinçli bir tercihle `dist=expon` çoğu zaman hem hızlı hem kararlı sonuç verir.
-- **`threshold=0.01`** — dağılımın hangi oranının aykırı sayılacağını belirler (varsayılan %1). Olasılık yoğunluğu en düşük %1'lik bölgeye düşen her nokta `IsOutlier=1` değerini alır. Bu değer, doğrudan yanlış pozitif oranını etkiler.
+- **`threshold=0.01`** — dağılımın hangi oranının aykırı sayılacağını belirler (varsayılan %1). Olasılık yoğunluğu en düşük %1'lik bölgeye düşen her nokta `IsOutlier=1` değerini alır. Bu değer, doğrudan false positive oranını etkiler.
 - **`show_density=true`** — çıktıya `ProbabilityDensity` alanını ekler. Yalnızca 0/1 bayrağı değil, "ne ölçüde beklenmedik" bilgisi de gerekiyorsa (RBA puanı için gereklidir) bu seçenek açılmalıdır.
 
 ## 3. Modeli incelemek: `summary`
@@ -124,7 +124,7 @@ _Görselleştirme sekmesinde beklenen aralığın (gölgeli bant) dışına taş
 
 ## 5. Eşiği ve dağılımı ayarlamak
 
-İlk modelin yüksek oranda yanlış pozitif üretmesi olağandır. Ayar üç noktadan yapılır.
+İlk modelin yüksek oranda false positive üretmesi olağandır. Ayar üç noktadan yapılır.
 
 **Eşik.** `threshold` değerini düşürmek (örneğin `0.005`) daha az sayıda, ancak daha yüksek güvenilirlikte alarm üretir. Oturum açma senaryosunda yalnızca *yüksek* taraf anlamlı olduğundan — düşük sayım alarm oluşturmaz — tek yönlü eşik kullanmak daha isabetlidir:
 
@@ -147,7 +147,7 @@ Bu kullanım `IsOutlier(login_count)_th=0.01` ve `..._th=0.001` biçiminde ayrı
 
 Model, eğitildiği andaki durumu temsil eder; ortam ise değişir. Yeni bir projeyle bir ekibin trafiği kalıcı olarak artarsa, eski baz çizgi sürekli yanlış alarm üretmeye başlar. İki yöntem uygulanabilir.
 
-Tam yeniden eğitim, zamanlanmış bir aramaya bağlanarak (örneğin her gece) modeli düzenli biçimde tazeler. Büyük veri hacminde tüm geçmişi yeniden işlemek maliyetliyse, **artımlı eğitim** ile model yalnızca yeni veriyle güncellenir:
+Tam yeniden eğitim, zamanlanmış bir aramaya bağlanarak (örneğin her gece) modeli düzenli biçimde tazeler. Büyük veri hacminde tüm geçmişi yeniden işlemek maliyetliyse, **incremental fit** (partial_fit) ile model yalnızca yeni veriyle güncellenir:
 
 ```spl
 index=auth action=success earliest=-1d@d latest=@d
@@ -159,7 +159,7 @@ index=auth action=success earliest=-1d@d latest=@d
 > `partial_fit=true` kullanıldığında yeni parametreler (yeni `threshold`, `dist` vb.) yok sayılır; model mevcut ayarlarıyla devam eder. Dağılımın değiştirilmesi gerekiyorsa tam yeniden eğitim yapılmalıdır.
 {: .prompt-warning }
 
-Ek olarak soğuk başlangıç durumu göz önünde bulundurulmalıdır: yeni eklenen bir kullanıcının modeli henüz yoktur. Bu kayıtların `apply` sonrası `isnull()` ile ayrılıp ayrı bir "yeni varlık" kuralına yönlendirilmesi, eksik modele dayalı karar vermekten daha güvenlidir.
+Ek olarak cold start durumu göz önünde bulundurulmalıdır: yeni eklenen bir kullanıcının modeli henüz yoktur. Bu kayıtların `apply` sonrası `isnull()` ile ayrılıp ayrı bir "yeni varlık" kuralına yönlendirilmesi, eksik modele dayalı karar vermekten daha güvenlidir.
 
 ## 7. Tespiti operasyonel hale getirmek
 

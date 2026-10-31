@@ -3,7 +3,7 @@ title: "Splunk ile DNS Beaconing ve Tünelleme Tespiti: SPL ile C2 Avı"
 date: 2026-10-31 19:00:00 +0300
 categories: [Blue Team]
 tags: [splunk, dns, threat-hunting, c2, beaconing, dns-tunneling, detection-engineering, siem]
-description: "DNS üzerinden C2 beaconing ve veri sızdırma (tünelleme) tespiti — SPL ile periyodiklik/jitter analizi, sorgu uzunluğu ve Shannon entropisi, alt alan kardinalitesi, yanlış pozitif azaltma ve RBA'ya bağlama."
+description: "DNS üzerinden C2 beaconing ve veri sızdırma (tünelleme) tespiti — SPL ile periyodiklik/jitter analizi, sorgu uzunluğu ve Shannon entropisi, alt alan kardinalitesi, false positive azaltma ve RBA'ya bağlama."
 image:
   path: /assets/img/posts/splunk-dns-search.svg
   alt: "Splunk Search arayüzünde DNS beaconing tespit sorgusu"
@@ -39,7 +39,7 @@ tag=dns
 
 Otomatik C2 trafiğinin en belirgin imzası düzenliliktir. Bir uç nokta aynı alan adına neredeyse sabit aralıklarla sorgu gönderiyorsa, bu insan davranışından çok bir zamanlayıcının işaretidir. Aralıkların standart sapması ne kadar düşükse (jitter ne kadar az ise) beacon olasılığı o kadar yüksektir.
 
-Yaklaşım şudur: her kaynak–alan çifti için ardışık sorgular arasındaki süre farkını `streamstats` ile hesaplıyor, sonra bu farkların ortalamasını ve standart sapmasını alıp **değişim katsayısını** (coefficient of variation, `cv = std/avg`) çıkarıyoruz:
+Yaklaşım şudur: her kaynak–alan çifti için ardışık sorgular arasındaki süre farkını `streamstats` ile hesaplıyor, sonra bu farkların ortalamasını ve standart sapmasını alıp **coefficient of variation** değerini (`cv = std/avg`) çıkarıyoruz:
 
 ```spl
 tag=dns
@@ -131,11 +131,11 @@ tag=dns
 | where total > 100 AND nx_ratio > 0.3
 ```
 
-## Yanlış pozitifleri azaltmak
+## False positive azaltma
 
 DNS tespitinde asıl zorluk, meşru ama "tünel gibi görünen" trafiktir. CDN'ler karma (hash) içeren uzun ve yüksek entropili alt alanlar üretir; antivirüs ve güvenlik ürünleri bulut sorguları için benzer desenler kullanır; telemetri servisleri düzenli aralıklarla "beacon" atar. Bu kaynaklar ayıklanmadan üretime alınan bir kural, gürültüden kullanılamaz hale gelir.
 
-En pratik yöntem, bilinen meşru alanları bir lookup ile dışlamaktır. Tranco/Umbrella gibi popülerlik listelerini ve kurum içi beyaz listeyi birleştirip sorgunun sonuna ekleyin:
+En pratik yöntem, bilinen meşru alanları bir lookup ile dışlamaktır. Tranco/Umbrella gibi popülerlik listelerini ve kurum içi allowlist'i birleştirip sorgunun sonuna ekleyin:
 
 ```spl
 ... 
@@ -143,7 +143,7 @@ En pratik yöntem, bilinen meşru alanları bir lookup ile dışlamaktır. Tranc
 | where isnull(allow)
 ```
 
-Bunun ötesinde, yüksek hacimli meşru servisleri (telemetri, güncelleme, CDN) kaynak+alan bazında belirli bir süre gözlemleyip kendi ortamınıza özgü bir temel beyaz liste çıkarmak, kuralın isabetini en çok artıran adımdır.
+Bunun ötesinde, yüksek hacimli meşru servisleri (telemetri, güncelleme, CDN) kaynak+alan bazında belirli bir süre gözlemleyip kendi ortamınıza özgü bir temel allowlist çıkarmak, kuralın isabetini en çok artıran adımdır.
 
 ## Tespiti operasyonel hale getirmek
 
@@ -167,7 +167,7 @@ Tespit sonucunu tek başına notable olaya çevirmek yerine, ilgili kaynağın r
 
 Her iki tespiti saatlik zamanlanmış aramalar olarak çalıştırıp çıktılarını risk index'ine yazdığınızda, DNS katmanı artık kör nokta olmaktan çıkar ve mevcut RBA kurgunuzun bir girdisi haline gelir. MITRE ATT&CK karşılığıyla bu tespitler T1071.004 (Application Layer Protocol: DNS) ve T1048 (Exfiltration Over Alternative Protocol) tekniklerini kapsar.
 
-DNS tespitinde mükemmel tek bir eşik yoktur; isabet, verinizi tanımak ve beyaz listeyi ortamınıza göre olgunlaştırmakla gelir. Kuralları bir süre düşük önem derecesiyle çalıştırıp ürettikleri adayları doğrulamak, eşikleri gerçek trafiğe göre ayarlamanın en güvenilir yoludur.
+DNS tespitinde mükemmel tek bir eşik yoktur; isabet, verinizi tanımak ve allowlist'i ortamınıza göre olgunlaştırmakla gelir. Kuralları bir süre düşük önem derecesiyle çalıştırıp ürettikleri adayları doğrulamak, eşikleri gerçek trafiğe göre ayarlamanın en güvenilir yoludur.
 
 ---
 
