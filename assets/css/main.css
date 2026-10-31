@@ -272,3 +272,28 @@ body::after{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;
   100%{opacity:1;filter:none;transform:none}
 }
 @media (prefers-reduced-motion:reduce){.caret,.term-bar .live::before{animation:none}}
+
+/* ---------- Güvenlik haberleri akışı ---------- */
+.feed{padding-bottom:80px}
+.feed-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px;padding-top:12px;border-top:1px dashed var(--line2)}
+.feed-head h2{font-family:var(--display);font-weight:400;font-size:clamp(2.2rem,4vw,3rem);margin:18px 0 0;line-height:1;color:var(--glow);text-shadow:0 0 14px rgba(var(--g),.45)}
+.feed-head h2::before{content:"> ";color:var(--dim)}
+.feed-meta{font-size:.78rem;color:var(--dim);letter-spacing:.04em}
+.feed-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.feed-item{border-bottom:1px solid var(--line)}
+.feed-item a{display:grid;grid-template-columns:150px 52px minmax(0,1fr);gap:4px 18px;align-items:baseline;
+  padding:12px 12px 12px 14px;text-decoration:none;border-left:2px solid transparent;transition:background .12s,border-color .12s}
+.feed-item a:hover{background:color-mix(in srgb,var(--glow) 7%,transparent);border-left-color:var(--glow)}
+.feed-src{color:var(--blue);font-weight:700;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-src::before{content:"[";color:var(--dim)}
+.feed-src::after{content:"]";color:var(--dim)}
+.feed-item time{color:var(--dim);font-size:.78rem;font-variant-numeric:tabular-nums}
+.feed-title{color:var(--ink);font-size:.92rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.feed-item a:hover .feed-title{color:var(--glow)}
+.feed-note{margin:12px 0 0;font-size:.74rem;color:var(--dim)}
+.feed-empty{margin:0;padding:22px 14px;color:var(--muted);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+@media (max-width:640px){
+  .feed-item a{grid-template-columns:minmax(0,1fr);gap:2px;padding-left:12px}
+  .feed-item .feed-src,.feed-item time{display:inline}
+  .feed-title{margin-top:4px}
+}

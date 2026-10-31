@@ -4,6 +4,9 @@ on:
     branches: [main, master]
     paths-ignore: [.gitignore, README.md, LICENSE]
   workflow_dispatch:
+  schedule:
+    # Siber güvenlik haberlerini tazelemek için 6 saatte bir yeniden derle
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
@@ -27,6 +30,14 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Haber bağımlılıkları
+        run: pip install --quiet feedparser
+      - name: Son siber güvenlik haberlerini çek
+        continue-on-error: true
+        run: python tools/fetch_news.py || true
       - run: bundle exec jekyll b -d _site --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production
