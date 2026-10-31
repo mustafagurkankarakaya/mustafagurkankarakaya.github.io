@@ -3,43 +3,40 @@ title: "Splunk MLTK (AI Toolkit) ile Anomali Tespiti: Sıfırdan Model Eğitimi"
 date: 2026-10-31 14:00:00 +0300
 categories: [Blue Team]
 tags: [splunk, mltk, machine-learning, anomaly-detection, siem, detection-engineering, densityfunction]
-description: "Splunk Machine Learning Toolkit ile kullanıcı bazında oturum açma hacminde anomali tespiti — DensityFunction ile model eğitimi, fit/apply/summary akışı, eşik ayarı, RBA'ya bağlama ve saha notları."
+description: "Splunk Machine Learning Toolkit ile kullanıcı bazında oturum açma hacminde anomali tespiti — DensityFunction ile model eğitimi, fit/apply/summary akışı, eşik ayarı, RBA'ya bağlama ve üretim notları."
 image:
-  path: /assets/img/posts/mltk-cover.svg
-  alt: "Splunk MLTK anomali tespiti"
+  path: /assets/img/posts/splunk-search-fit.svg
+  alt: "Splunk Search & Reporting arayüzünde fit DensityFunction komutu"
 ---
 
-Bir kuralın eşiğini elle koyduğunuz her an aslında bir tahminde bulunuyorsunuz: "Saatte 10 başarısız oturum çok mu?" Belki bir kullanıcı için çoktur, servis hesabı için gürültüdür. Statik eşiklerin derdi bu; herkese aynı pantolonu giydiriyorsunuz. Oturup her varlık için ayrı ayrı eşik yazmak da sürdürülebilir değil — ortamda beş bin kullanıcı varsa beş bin eşik bakamazsınız.
+Bir korelasyon kuralının eşiğini elle belirlemek, aslında bütün varlıklar için aynı kabulü yapmak anlamına gelir. "Saatte 10 başarısız oturum açma yüksek midir?" sorusunun yanıtı, bir son kullanıcı ile bir servis hesabı için aynı değildir. Statik eşiklerin temel kısıtı budur: tek bir değeri bütün popülasyona dayatırlar. Varlık başına ayrı eşik tanımlamak ise ölçeklenmez; binlerce kullanıcılı bir ortamda bu eşiklerin bakımı pratikte mümkün değildir.
 
-İşte "normalin ne olduğunu" veriye öğretme fikri tam burada devreye giriyor. Splunk'ın Machine Learning Toolkit'i (son sürümlerde arayüzde **AI Toolkit** adıyla da karşınıza çıkar) bunu SPL'in içinden, ayrı bir platforma veri taşımadan yapmanıza izin veriyor. Aşağıda uçtan uca bir senaryoyu — kullanıcı bazında oturum açma hacminde anomali tespitini — gerçek sorgularla kuracağız: veriyi hazırlamaktan modeli eğitmeye, canlıya almaya ve sonucu RBA'ya bağlamaya kadar.
+Alternatif yaklaşım, "normal"in ne olduğunu veriden öğrenmektir. Splunk Machine Learning Toolkit (MLTK; güncel sürümlerde arayüzde **AI Toolkit** olarak da adlandırılır), bunu SPL içinden, veriyi harici bir platforma taşımadan yapmaya olanak tanır. Bu yazıda uçtan uca bir örneği — kullanıcı bazında oturum açma hacminde anomali tespitini — gerçek sorgularla ele alıyoruz: veri hazırlığından model eğitimine, modelin operasyonel hale getirilmesine ve risk tabanlı tespite (RBA) bağlanmasına kadar.
 
-> Not: Örnekler Splunk Enterprise 9.x + MLTK 5.5 üzerinde. Algoritma parametreleri sürümle değişebiliyor, kendi ortamınızda `| fit DensityFunction` üstüne bir `help` çekmekten üşenmeyin.
+> Örnekler Splunk Enterprise 9.x ve MLTK 5.5 üzerinde hazırlanmıştır. Algoritma parametreleri sürümle değişebildiğinden, kendi ortamınızdaki geçerli parametreleri resmi dokümandan doğrulamanız önerilir.
 {: .prompt-info }
 
-## MLTK aslında ne yapıyor?
+## MLTK nasıl çalışır?
 
-Kafadaki soru işaretini baştan silelim: MLTK sihir değil, scikit-learn'ü SPL'e bağlayan bir köprü. Arka planda **Python for Scientific Computing (PSC)** add-on'u çalışıyor; MLTK'yi kurarken onu da kurmanız şart, yoksa `fit` komutu "algoritma bulunamadı" der geçer.
+MLTK, arka planda **Python for Scientific Computing (PSC)** eklentisi üzerinden scikit-learn algoritmalarını SPL komutlarıyla kullanılabilir hale getirir. Kurulumda PSC eklentisinin de yüklenmesi gerekir; aksi halde `fit` komutu algoritmayı bulamaz.
 
-Pratikte üç komutla yaşıyorsunuz:
+Uygulamada üç komut üzerinden ilerlenir:
 
-- `fit` — bir algoritmayı veriye uydurur (eğitir) ve isterseniz modeli `into <isim>` ile saklar. Saklanan model aslında bir lookup; `__mlspl_<isim>.csv` olarak `lookups` dizininde durur.
+- `fit` — bir algoritmayı veriye uydurur (eğitir) ve `into <isim>` ile modeli saklar. Kaydedilen model bir lookup olarak tutulur; `__mlspl_<isim>.csv` adıyla `lookups` dizininde bulunur.
 - `apply` — kayıtlı modeli yeni veriye uygular, yani skorlar.
-- `summary` — eğitilmiş modelin içini gösterir.
+- `summary` — eğitilmiş modelin içeriğini raporlar.
 
-![MLTK anomali tespiti akışı]({{ site.url }}{{ site.baseurl }}/assets/img/posts/mltk-pipeline.svg)
-_Akış tek yönlü değil: eğitimi periyodik, skorlamayı sürekli çalıştırırsınız._
-
-Anomali tarafında elinizde birkaç seçenek var — `OneClassSVM`, `LocalOutlierFactor`, `IsolationForest`, çok değişkenli için `MultivariateOutlierDetection`. Ama günlük işte en çok yaslandığım, bu yazının da kahramanı **`DensityFunction`**. Sebebi basit: `by` ile her varlık için **ayrı** bir olasılık dağılımı öğrenebiliyor, modeli diske yazıp `apply` ile tekrar tekrar kullanabiliyorsunuz (LocalOutlierFactor'ı mesela `into` ile kaydedemiyorsunuz, o yüzden canlı skorlama için uygun değil).
+Anomali tespitinde birden fazla algoritma bulunur: `OneClassSVM`, `LocalOutlierFactor`, `IsolationForest` ve çok değişkenli senaryolar için `MultivariateOutlierDetection`. Bu yazıda **`DensityFunction`** kullanıyoruz. Tercih sebebi iki yönlü: `by` yan tümcesiyle her varlık için ayrı bir olasılık dağılımı öğrenebilmesi ve modelin diske kaydedilip `apply` ile tekrar tekrar kullanılabilmesidir. Örneğin `LocalOutlierFactor` modeli `into` ile kaydedilemediğinden sürekli skorlamaya uygun değildir.
 
 ## Senaryo
 
-Amacımız şu: her kullanıcının **saatlik oturum açma sayısı** için bir "normal" profili çıkarmak, sonra canlı veride bu profilin dışına taşan davranışı yakalamak. Ele geçirilmiş bir hesabın gece yarısı 40 kere oturum açması ya da normalde günde iki kez görünen bir servis hesabının aniden saatte 25'e fırlaması — statik eşikle bunların hepsine tek rakam koyamazsınız, ama kullanıcı başına öğrenilmiş bir dağılım bunu doğal olarak yakalar.
+Amaç, her kullanıcının **saatlik oturum açma sayısı** için bir "normal" profil çıkarmak ve ardından canlı veride bu profilin dışına taşan davranışı tespit etmektir. Ele geçirilmiş bir hesabın kısa sürede onlarca oturum açması ya da normalde günde birkaç kez görülen bir servis hesabının aniden saatte yirmiye çıkması — statik bir eşik bu durumların tamamını tek bir değerle yakalayamaz, ancak varlık başına öğrenilmiş bir dağılım bunu doğal biçimde değerlendirir.
 
-Veri kaynağı olarak kimlik doğrulama loglarını (`index=auth`, Windows'ta 4624'ler, Linux'ta `sshd` vb. — kendi ortamınıza göre `sourcetype`) alıyorum.
+Veri kaynağı olarak kimlik doğrulama loglarını kullanıyoruz (`index=auth`; Windows tarafında 4624 olayları, Linux tarafında `sshd` kayıtları — `sourcetype` kendi ortamınıza göre değişir).
 
-## 1. Veriyi anlamak ve şekle sokmak
+## 1. Veriyi anlamak ve hazırlamak
 
-Modelden önce veriyi tanıyın. Ham olaydan modele giren şey saatlik sayım olacak, o yüzden `bin` + `stats` ile zamanı kovalara bölüp kullanıcı başına sayıyoruz:
+Model eğitiminden önce veriyi incelemek gerekir. Modele girecek değer saatlik sayım olduğundan, `bin` ve `stats` ile zamanı kovalara bölüp kullanıcı başına sayıyoruz:
 
 ```spl
 index=auth action=success earliest=-7d@d latest=@d
@@ -47,7 +44,7 @@ index=auth action=success earliest=-7d@d latest=@d
 | stats count AS login_count by _time, user
 ```
 
-Modele vermeden önce alanın dağılımına bakmak iyi alışkanlık — `login_count` sağa çarpık mı, kaç benzersiz kullanıcı var, boş değer dönüyor mu:
+Alanı modele vermeden önce dağılımını kontrol etmek yerinde olur — `login_count` sağa çarpık mı, kaç benzersiz kullanıcı var, boş değer dönüyor mu:
 
 ```spl
 index=auth action=success earliest=-7d@d latest=@d
@@ -56,11 +53,11 @@ index=auth action=success earliest=-7d@d latest=@d
 | fieldsummary
 ```
 
-Burada görmek istediğiniz şey: `login_count` makul bir aralıkta, çok sayıda kullanıcı için yeterince satır var. **Kritik eşik**: `DensityFunction`'ın her grup için sağlıklı bir dağılım çıkarabilmesi için grup başına en az ~50 veri noktası ister. Haftada 24×7 = 168 saatlik kova demek; günde birkaç kez görünen kullanıcılar için bu yeterli, ama ayda bir görünen birini modellemeye kalkarsanız anlamsız sonuç alırsınız. Bu tür düşük-frekanslı varlıkları ya ayrı ele alın ya da zaman penceresini genişletin.
+Burada beklenen durum, `login_count` değerlerinin makul bir aralıkta olması ve çok sayıda kullanıcı için yeterli satırın bulunmasıdır. Önemli bir eşik vardır: `DensityFunction`'ın her grup için güvenilir bir dağılım kurabilmesi için grup başına yaklaşık **50 veri noktası** önerilir. Haftalık pencere kullanıcı başına 24×7 = 168 saatlik kova üretir; düzenli görülen kullanıcılar için bu yeterlidir. Çok seyrek görülen varlıkların modellenmesi güvenilir olmayacağından, bunları ya ayrı ele almak ya da zaman penceresini genişletmek gerekir.
 
 ## 2. Baz çizgiyi öğrenmek: `fit DensityFunction`
 
-İşin kalbi tek satır. Son 30 günü "normal" kabul edip kullanıcı başına dağılımı öğreniyoruz ve modeli `app:auth_baseline` olarak kaydediyoruz:
+Sürecin merkezi tek bir komuttur. Son 30 günü "normal" kabul ederek kullanıcı başına dağılımı öğreniyor ve modeli `app:auth_baseline` olarak kaydediyoruz:
 
 ```spl
 index=auth action=success earliest=-30d@d latest=@d
@@ -70,29 +67,32 @@ index=auth action=success earliest=-30d@d latest=@d
     dist=auto threshold=0.01 show_density=true
 ```
 
-Parametreleri tek tek açayım, çünkü anomali tespitinde oynayacağınız düğmeler bunlar:
+Parametreler, anomali tespitinde doğrudan sonucu belirleyen ayarlardır:
 
-- **`by user`** — asıl mesele bu. Her kullanıcı için ayrı bir dağılım fit ediliyor. `admin` ile stajyerin "normal"i aynı olmak zorunda değil. En fazla 5 alanla gruplayabilir, varsayılan 1024 grup sınırını `max_groups` ile artırabilirsiniz.
-- **`dist=auto`** — MLTK dört dağılımı (`norm`, `expon`, `gaussian_kde`, `beta`) dener ve en iyi uyanı seçer. Verinizin şeklini bilmiyorsanız `auto` güvenli. Dağılımı biliyorsanız (ör. sayım verisi çoğu zaman sağa çarpıktır, `expon` iyi oturur) elle vermek hem hızlı hem stabil olur.
-- **`threshold=0.01`** — dağılımın hangi kadarının "aykırı" sayılacağı. Varsayılan %1. Yani olasılık yoğunluğu en düşük %1'lik kuyruğa düşen her nokta `IsOutlier=1` alır. Bu rakam doğrudan false-positive oranınızı belirliyor; birazdan ayarına geleceğiz.
-- **`show_density=true`** — çıktıya `ProbabilityDensity` ekler. Sadece 0/1 bayrağı değil, "ne kadar anormal" bilgisini de istiyorsanız (RBA skoru için şart) açın.
+- **`by user`** — asıl belirleyici seçim budur. Her kullanıcı için ayrı bir dağılım fit edilir; bir yönetici hesabının "normal"i ile bir son kullanıcının "normal"i aynı olmak zorunda değildir. En fazla 5 alanla gruplama yapılabilir; varsayılan 1024 grup sınırı `max_groups` ile artırılabilir.
+- **`dist=auto`** — MLTK dört dağılımı (`norm`, `expon`, `gaussian_kde`, `beta`) dener ve en iyi uyanı seçer. Verinin dağılımı bilinmiyorsa `auto` güvenli bir başlangıçtır. Sayım verileri genellikle sağa çarpık olduğundan, bilinçli bir tercihle `dist=expon` çoğu zaman hem hızlı hem kararlı sonuç verir.
+- **`threshold=0.01`** — dağılımın hangi oranının aykırı sayılacağını belirler (varsayılan %1). Olasılık yoğunluğu en düşük %1'lik bölgeye düşen her nokta `IsOutlier=1` değerini alır. Bu değer, doğrudan yanlış pozitif oranını etkiler.
+- **`show_density=true`** — çıktıya `ProbabilityDensity` alanını ekler. Yalnızca 0/1 bayrağı değil, "ne ölçüde beklenmedik" bilgisi de gerekiyorsa (RBA puanı için gereklidir) bu seçenek açılmalıdır.
 
-![DensityFunction dağılım ve eşik]({{ site.url }}{{ site.baseurl }}/assets/img/posts/mltk-density.svg)
-_Model her kullanıcı için böyle bir yoğunluk eğrisi öğrenir; kuyruğa düşen noktalar aykırı işaretlenir._
+![Görselleştirme sekmesinde öğrenilen dağılım]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-density.svg)
+_Görselleştirme sekmesinde bir kullanıcı için öğrenilen yoğunluk ve eşik; kuyruğa düşen değerler aykırı kabul edilir._
 
 ## 3. Modeli incelemek: `summary`
 
-Eğittikten sonra körlemesine canlıya almayın, modele bir bakın:
+Model eğitildikten sonra doğrudan canlıya alınmamalı, önce içeriği incelenmelidir:
 
 ```spl
 | summary app:auth_baseline
 ```
 
-Çıktıda her grup (kullanıcı) için seçilen dağılım tipini (`type`), ortalama/standart sapmayı, kardinaliteyi ve `wasserstein`/`kolmogorov_smirnov` mesafesini görürsünüz. Mesafe metriği, öğrenilen dağılımın gerçek veriye ne kadar oturduğunu söyler — çok yüksekse o grup için model zayıf demektir, o kullanıcıyı ayrı değerlendirmek gerekebilir. `svc_backup` gibi deterministik servis hesaplarının dağılımı sivri çıkar; bu iyi, çünkü en ufak sapmayı yakalarlar.
+Çıktıda her grup (kullanıcı) için seçilen dağılım tipi (`type`), ortalama ve standart sapma, kardinalite ve `wasserstein` / `kolmogorov_smirnov` mesafesi yer alır. Mesafe metriği, öğrenilen dağılımın gerçek veriye ne kadar uyduğunu gösterir; değerin yüksek olması o grup için modelin zayıf olduğuna işaret eder ve ilgili kullanıcının ayrı değerlendirilmesini gerektirebilir. Deterministik davranan servis hesaplarının dağılımı dar ve sivri çıkar; bu beklenen bir sonuçtur ve en küçük sapmaların yakalanmasını sağlar.
+
+![İstatistik sekmesinde summary çıktısı]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-summary.svg)
+_İstatistik sekmesinde `summary` çıktısı; her kullanıcı için seçilen dağılım tipi ve uyum mesafesi._
 
 ## 4. Canlıya almak: `apply`
 
-Model hazır. Şimdi onu taze veriye uyguluyoruz. Son bir saati skorlayıp sadece aykırıları süzelim:
+Model hazır olduğunda taze veriye uygulanır. Son bir saati skorlayıp yalnızca aykırı değerleri süzüyoruz:
 
 ```spl
 index=auth action=success earliest=-1h@h latest=now
@@ -104,42 +104,42 @@ index=auth action=success earliest=-1h@h latest=now
 | table _time, user, login_count, "IsOutlier(login_count)", "ProbabilityDensity(login_count)"
 ```
 
-Alan adlarındaki tırnaklara dikkat — `IsOutlier(login_count)` parantez içerdiği için SPL'de tek tırnakla sarmak gerekir, yoksa parser takılır. Çıktı aşağıdaki gibi görünür; `svc_backup` normalde 2-3 bandındayken 27'ye çıkmış ve `ProbabilityDensity` dibe vurmuş:
+Alan adlarındaki tek tırnaklara dikkat edilmelidir: `IsOutlier(login_count)` parantez içerdiğinden SPL'de tek tırnakla sarılması gerekir, aksi halde ayrıştırıcı hata verir. Aşağıdaki çıktıda `svc_backup` hesabı normalde 2–3 bandındayken 27 değerine çıkmış ve `ProbabilityDensity` değeri belirgin biçimde düşmüştür:
 
-![apply çıktısı — İstatistik sekmesi]({{ site.url }}{{ site.baseurl }}/assets/img/posts/mltk-results.svg)
-_`ProbabilityDensity` ne kadar küçükse nokta o kadar beklenmedik; RBA skorunu bunun üstüne kurabilirsiniz._
+![İstatistik sekmesinde apply sonuçları]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-apply.svg)
+_İstatistik sekmesinde `apply` çıktısı; `ProbabilityDensity` ne kadar küçükse değer o kadar beklenmediktir._
 
-Aynı sonucu zaman ekseninde görselleştirince hikâye netleşiyor — mavi çizgi gerçek trafik, kırmızı noktalar modelin "bu beklenmedik" dediği saatler:
+Aynı sonuç zaman ekseninde görselleştirildiğinde durum daha net izlenir — mavi çizgi gerçek trafiği, kırmızı noktalar modelin aykırı olarak işaretlediği saatleri gösterir:
 
-![Saatlik oturum açma ve anomaliler]({{ site.url }}{{ site.baseurl }}/assets/img/posts/mltk-timeline.svg)
-_Beklenen aralığın (gölgeli bant) dışına taşan üç saat anomali olarak işaretlendi._
+![Görselleştirme sekmesinde anomaliler]({{ site.url }}{{ site.baseurl }}/assets/img/posts/splunk-timeline.svg)
+_Görselleştirme sekmesinde beklenen aralığın (gölgeli bant) dışına taşan saatler anomali olarak işaretlenmiştir._
 
 ## 5. Eşiği ve dağılımı ayarlamak
 
-İlk modelin çok gürültü yaparsa panik yok, normal. Üç yerden ayar çekersiniz:
+İlk modelin yüksek oranda yanlış pozitif üretmesi olağandır. Ayar üç noktadan yapılır.
 
-**Eşiği sıkın/gevşetin.** `threshold`'ı düşürmek (ör. `0.005`) daha az ama daha emin alarm demek. Çift taraflı sorun yaşıyorsanız tek yönlü eşik kullanın — oturum açmada bizi genelde *yüksek* taraf ilgilendirir, düşük sayım alarm değildir:
+**Eşik.** `threshold` değerini düşürmek (örneğin `0.005`) daha az sayıda, ancak daha yüksek güvenilirlikte alarm üretir. Oturum açma senaryosunda yalnızca *yüksek* taraf anlamlı olduğundan — düşük sayım alarm oluşturmaz — tek yönlü eşik kullanmak daha isabetlidir:
 
 ```spl
 ... | fit DensityFunction login_count by user into app:auth_baseline
     dist=auto upper_threshold=0.01 show_density=true
 ```
 
-**Birden fazla eşikle katmanlı uyarı** üretebilirsiniz — biri "izle", biri "müdahale et":
+**Katmanlı eşik.** Birden fazla eşikle iki seviyeli uyarı tanımlanabilir; biri "izle", diğeri "müdahale et":
 
 ```spl
 ... | apply auth_baseline threshold="0.01,0.001"
 ```
 
-Bu, `IsOutlier(login_count)_th=0.01` ve `..._th=0.001` diye ayrı kolonlar döndürür; düşük eşikli olanı doğrudan notable'a, yükseği risk puanına bağlarsınız.
+Bu kullanım `IsOutlier(login_count)_th=0.01` ve `..._th=0.001` biçiminde ayrı kolonlar döndürür; düşük eşikli sonuç doğrudan notable olaya, yüksek eşikli sonuç ise risk puanına bağlanabilir.
 
-**Dağılımı elle seçin.** `dist=auto` bazen beklenmedik bir dağılım seçip sınırları garipleştirebiliyor. Sayım verisinde `dist=expon` ya da `exclude_dist="beta"` çoğu zaman daha stabil sonuç verir. Kararsızsanız aynı veriyle iki model fit edip `summary`'deki mesafe metriklerini karşılaştırın.
+**Dağılım.** `dist=auto` bazı durumlarda beklenenden farklı bir dağılım seçerek sınırları bozabilir. Sayım verilerinde `dist=expon` veya `exclude_dist="beta"` genellikle daha kararlı sonuç verir. Kararsız kalınan durumda, aynı veriyle iki model eğitip `summary` çıktısındaki mesafe metrikleri karşılaştırılabilir.
 
 ## 6. Yeniden eğitim ve concept drift
 
-Model donmuş bir fotoğraf; dünya değişiyor. Yeni projeyle bir ekibin trafiği kalıcı olarak artarsa eski baz çizgi sürekli yanlış alarm üretir. İki yaklaşım:
+Model, eğitildiği andaki durumu temsil eder; ortam ise değişir. Yeni bir projeyle bir ekibin trafiği kalıcı olarak artarsa, eski baz çizgi sürekli yanlış alarm üretmeye başlar. İki yöntem uygulanabilir.
 
-Tam yeniden eğitimi zamanlanmış bir aramaya bağlayıp (ör. her gece) modeli tazeleyebilirsiniz. Ya da büyük veride her şeyi baştan fit etmek pahalıysa **artımlı eğitim** ile modeli günceller, geçmişi yeniden işlemezsiniz:
+Tam yeniden eğitim, zamanlanmış bir aramaya bağlanarak (örneğin her gece) modeli düzenli biçimde tazeler. Büyük veri hacminde tüm geçmişi yeniden işlemek maliyetliyse, **artımlı eğitim** ile model yalnızca yeni veriyle güncellenir:
 
 ```spl
 index=auth action=success earliest=-1d@d latest=@d
@@ -148,18 +148,18 @@ index=auth action=success earliest=-1d@d latest=@d
 | fit DensityFunction login_count by user into app:auth_baseline partial_fit=true
 ```
 
-> `partial_fit=true` iken yeni parametreler (yeni `threshold`, `dist` vb.) yok sayılır; mevcut modelin ayarlarıyla devam eder. Dağılımı değiştirmek istiyorsanız tam yeniden eğitim şart.
+> `partial_fit=true` kullanıldığında yeni parametreler (yeni `threshold`, `dist` vb.) yok sayılır; model mevcut ayarlarıyla devam eder. Dağılımın değiştirilmesi gerekiyorsa tam yeniden eğitim yapılmalıdır.
 {: .prompt-warning }
 
-Bir de **soğuk başlangıç** derdi var: dün işe giren kullanıcının modeli yok. Bunları `apply` sonrası `isnull()` ile ayıklayıp ayrı bir "yeni varlık" kuralına düşürmek, modele güvenmekten daha sağlıklı.
+Ek olarak soğuk başlangıç durumu göz önünde bulundurulmalıdır: yeni eklenen bir kullanıcının modeli henüz yoktur. Bu kayıtların `apply` sonrası `isnull()` ile ayrılıp ayrı bir "yeni varlık" kuralına yönlendirilmesi, eksik modele dayalı karar vermekten daha güvenlidir.
 
 ## 7. Tespiti operasyonel hale getirmek
 
-Sorgu güzel ama dashboard'da durduğu sürece tespit değil. İki şekilde sahaya çıkarırım.
+Yalnızca bir panoda görüntülenen sorgu, operasyonel bir tespit değildir. İki yöntem öne çıkar.
 
-**Zamanlanmış alarm** olarak: yukarıdaki `apply` sorgusunu saatlik çalışan bir scheduled search yapıp sonuç döndüğünde tetikleyebilirsiniz. Ama tek başına alarm, modern SOC'ta gürültü demek.
+**Zamanlanmış alarm.** Yukarıdaki `apply` sorgusu saatlik çalışan bir scheduled search olarak tanımlanıp sonuç döndüğünde tetiklenebilir. Ancak tek başına üretilen alarmlar çoğu zaman gürültüye yol açar.
 
-**Risk tabanlı (RBA)** yaklaşım çok daha iyi oturuyor: anomaliyi doğrudan notable'a çevirmek yerine kullanıcının risk puanına katkı olarak yazıyoruz. `ProbabilityDensity` ne kadar düşükse katkı o kadar yüksek:
+**Risk tabanlı tespit (RBA).** Anomaliyi doğrudan notable olaya çevirmek yerine kullanıcının risk puanına katkı olarak yazmak daha etkili bir yaklaşımdır. `ProbabilityDensity` değeri düştükçe katkı artar:
 
 ```spl
 index=auth action=success earliest=-1h@h latest=now
@@ -170,16 +170,16 @@ index=auth action=success earliest=-1h@h latest=now
 | eval density='ProbabilityDensity(login_count)'
 | eval risk_score = round(min(100, 30 + 12 * ln(1 / (density + 0.0001))), 0)
 | eval risk_object=user, risk_object_type="user",
-       risk_message="Oturum açma hacminde anomali: ".login_count." (baz dışı)"
+       risk_message="Oturum açma hacminde anomali: ".login_count." (baz çizgi dışı)"
 | table _time, risk_object, risk_object_type, risk_score, risk_message
 | collect index=risk
 ```
 
-Böylece tek bir anomali alarm yağdırmaz; aynı kullanıcıda gün içinde anomali + farklı kaynaktan oturum + yeni bir süreç gibi sinyaller **biriktikçe** risk eşiğini aşar ve tek, zengin bir notable üretir. ES kullanıyorsanız bunu doğrudan bir Risk Incident Rule'a bağlarsınız. ML tabanlı tespitin UEBA ile buluştuğu yer tam burası.
+Böylece tek bir anomali tek başına alarm üretmez; aynı kullanıcıda aynı gün içinde biriken sinyaller — anomali, farklı kaynaktan oturum, yeni bir süreç — risk eşiğini aştığında tek ve bağlam açısından zengin bir notable olaya dönüşür. Splunk Enterprise Security kullanılıyorsa bu akış doğrudan bir Risk Incident Rule'a bağlanır. Makine öğrenmesi tabanlı tespitin UEBA ile buluştuğu nokta budur.
 
 ## Tek değişkenin ötesi
 
-Oturum sayısı tek başına bazen yetmez; "az oturum ama çok veri çıkışı" gibi kombinasyonları tek alan yakalamaz. Çok değişkenli tarafta MLTK'nin hazır bir sarmalayıcısı var: `MultivariateOutlierDetection` arka planda `StandardScaler` → `PCA` → `DensityFunction` zincirini kurar:
+Tek bir alan her zaman yeterli olmaz; "az oturum fakat yüksek veri çıkışı" gibi kombinasyonlar tek değişkenle yakalanamaz. Çok değişkenli tespitte MLTK'nin hazır bir sarmalayıcısı vardır: `MultivariateOutlierDetection`, arka planda `StandardScaler` → `PCA` → `DensityFunction` zincirini kurar:
 
 ```spl
 index=auth earliest=-30d@d latest=@d
@@ -188,23 +188,23 @@ index=auth earliest=-30d@d latest=@d
 | fit MultivariateOutlierDetection login_count distinct_src bytes_out by user into app:auth_mv threshold=0.005
 ```
 
-Alternatiflere kısaca değinmek gerekirse: `IsolationForest` ve `OneClassSVM` modeli `into` ile kaydedip `apply` edebildiğiniz için canlı skorlamaya uygun; `LocalOutlierFactor` ise kaydedilemiyor, daha çok keşif/tek seferlik analiz için. Gerçek derin öğrenmeye (kendi PyTorch/TensorFlow modeliniz, GPU, container) ihtiyaç duyarsanız oyun **DSDL**'e (Splunk App for Data Science and Deep Learning, eski adıyla DLTK) kayar — ama çoğu SOC anomali ihtiyacı DensityFunction'la fazlasıyla çözülüyor, ağır topları gereksiz yere masaya sürmeyin.
+Alternatiflere kısaca değinmek gerekirse: `IsolationForest` ve `OneClassSVM`, model `into` ile kaydedilip `apply` edilebildiğinden canlı skorlamaya uygundur; `LocalOutlierFactor` ise kaydedilemediği için daha çok keşif ve tek seferlik analiz amacıyla kullanılır. Kendi PyTorch/TensorFlow modeli, GPU veya container ihtiyacı doğduğunda süreç **DSDL**'e (Splunk App for Data Science and Deep Learning, eski adıyla DLTK) taşınır. Çoğu SOC anomali ihtiyacı `DensityFunction` ile karşılanabildiğinden, daha ağır çözümlere ancak gerçek bir gereklilik doğduğunda geçilmesi önerilir.
 
-## Sahadan birkaç not
+## Üretimde dikkat edilecek noktalar
 
-Kâğıt üstünde her şey güzel; üretimde canınızı yakan ayrıntılar şunlar:
+Tasarım aşamasında sade görünen süreç, üretimde birkaç ayrıntıya bağlıdır:
 
-- **Model boyutu sessiz bir sınır.** Binlerce kullanıcıyı `by` ile modellerseniz lookup şişer. `mlspl.conf` içindeki `max_model_size_mb`, `max_inputs` ve `max_fit_time` limitlerine takılırsınız; takıldığınızda hata net olmayabilir, "model kaydedilemedi" gibi döner. Büyük ortamda kullanıcıları segmentlere bölüp (ör. departman) ayrı modeller tutmak hem performans hem isabet açısından daha iyi.
-- **Kardinalite = maliyet.** `by` alanındaki benzersiz değer sayısı doğrudan eğitim süresini belirler. Gürültülü alanlarla (ör. tam `src_ip`) gruplamayın.
-- **`_time` hizası.** `bin span=1h` ile `earliest/latest`'i aynı sınıra oturtun (`@h`, `@d`), yoksa yarım kovalar yapay anomali üretir. En sık yapılan hata bu.
-- **Lookup izinleri.** `fit` ile kaydettiğiniz model bir lookup; `app:` kapsamında kaydedip paylaşım izinlerini ayarlamazsanız zamanlanmış arama "model bulunamadı" der. `into app:...` ile global/app kapsamını bilinçli seçin.
-- **PSC sürümü.** MLTK'yi yükselttiğinizde PSC add-on'unu da eşlemeyi unutmayın; sürüm uyumsuzluğu `fit`'i sessizce bozar.
+- **Model boyutu bir sınırdır.** Binlerce kullanıcı `by` ile modellendiğinde lookup büyür ve `mlspl.conf` içindeki `max_model_size_mb`, `max_inputs`, `max_fit_time` limitlerine takılabilirsiniz. Bu durumda dönen hata her zaman açıklayıcı olmaz. Büyük ortamlarda kullanıcıları segmentlere (örneğin departman) bölüp ayrı modeller tutmak hem performans hem isabet açısından daha uygundur.
+- **Kardinalite maliyeti artırır.** `by` alanındaki benzersiz değer sayısı doğrudan eğitim süresini belirler; yüksek kardinaliteli alanlarla (örneğin ham `src_ip`) gruplama yapmaktan kaçınılmalıdır.
+- **`_time` hizalaması önemlidir.** `bin span=1h` ile `earliest`/`latest` değerleri aynı sınıra oturtulmalıdır (`@h`, `@d`); aksi halde yarım kovalar yapay anomaliler üretir. Bu, sık karşılaşılan bir hatadır.
+- **Lookup izinleri.** `fit` ile kaydedilen model bir lookup olduğundan, `app:` kapsamında kaydedilip paylaşım izinleri ayarlanmazsa zamanlanmış arama "model bulunamadı" hatası döndürür. `into app:...` ile kapsam bilinçli seçilmelidir.
+- **PSC sürümü.** MLTK yükseltildiğinde PSC eklentisinin de uyumlu sürüme güncellenmesi gerekir; sürüm uyumsuzluğu `fit` komutunu sessizce bozabilir.
 
-Statik eşikten baz-çizgi öğrenen bir modele geçmek, kural sayınızı azaltmaz ama kurallarınızı "herkese tek rakam"dan "her varlığa kendi normali"ne taşır. Bir hafta canlıda bırakıp ürettiği aykırıları gözle doğrulayın; eşiği ortam konuşmaya başlayınca kendisi söyler.
+Statik eşikten baz çizgi öğrenen bir modele geçmek, kural sayısını azaltmaz; ancak tespiti "bütün popülasyona tek değer" yaklaşımından "her varlığa kendi normali" yaklaşımına taşır. Modeli bir süre canlıda gözlemleyip ürettiği aykırı değerleri doğrulamak, eşik ve dağılım seçimini verinin kendisine göre ayarlamanın en sağlıklı yoludur.
 
 ---
 
 ### Kaynaklar
 
 - [Algorithms in the Splunk Machine Learning Toolkit](https://help.splunk.com/en/splunk-enterprise/apply-machine-learning/use-ai-toolkit/5.5.0/algorithms-and-scoring-metrics-in-mltk/algorithms-in-the-splunk-machine-learning-toolkit) — DensityFunction ve diğer algoritmaların resmi referansı
-- Splunk MLTK User Guide — `fit` / `apply` / `summary` komut sözdizimi
+- Splunk Machine Learning Toolkit User Guide — `fit` / `apply` / `summary` komut sözdizimi
