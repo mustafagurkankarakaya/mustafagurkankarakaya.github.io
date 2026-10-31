@@ -1,0 +1,41 @@
+---
+layout: default
+---
+{%- assign cat = page.categories | first | default: "Genel" -%}
+{%- assign meta = site.data.categories[cat] -%}
+{%- assign col = meta.color | default: "purple" -%}
+{%- assign code = meta.code | default: "LOG" -%}
+{%- assign words = content | strip_html | number_of_words -%}
+{%- assign minutes = words | divided_by: 200 | plus: 1 -%}
+{%- assign cover = page.image.path | default: page.image -%}
+{%- if cover and page.media_subpath -%}{%- assign cover = page.media_subpath | append: "/" | append: cover | replace: "//", "/" -%}{%- endif -%}
+<main id="content" style="--c:var(--{{ col }})">
+  <article class="post">
+    <header class="post-hero">
+      <a class="back" href="{{ '/#posts' | relative_url }}">Tüm yazılar</a>
+      <p class="cmd-line" aria-hidden="true"><span class="p">$</span> cat {{ page.slug | default: page.title | slugify }}.md</p>
+      <h1 class="post-title">{{ page.title }}</h1>
+      <div class="post-meta">
+        <a class="cat" href="{{ '/' | relative_url }}?category={{ cat | url_encode }}#posts"><span class="sev">[{{ code }}]</span> {{ cat }}</a>
+        <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%Y-%m-%d" }}</time>
+        <span>{{ minutes }} dk okuma</span>
+      </div>
+      {% if page.tags.size > 0 %}<div class="post-tags">{% for t in page.tags %}<a href="{{ '/' | relative_url }}?tag={{ t | url_encode }}#posts">#{{ t }}</a>{% endfor %}</div>{% endif %}
+    </header>
+
+    {% if cover %}<figure class="cover"><img src="{{ cover | relative_url }}" alt="{{ page.image.alt | default: page.title | escape }}"></figure>{% endif %}
+
+    <div class="post-grid">
+      <div class="post-body">{{ content }}</div>
+      <aside class="toc" id="toc" aria-label="Bu yazıda" hidden>
+        <h2>Bu yazıda</h2>
+        <ol id="toc-list"></ol>
+      </aside>
+    </div>
+
+    <nav class="prevnext" aria-label="Diğer yazılar">
+      {% if page.previous %}<a class="prev" href="{{ page.previous.url | relative_url }}"><span>Önceki yazı</span>{{ page.previous.title }}</a>{% else %}<span></span>{% endif %}
+      {% if page.next %}<a class="next" href="{{ page.next.url | relative_url }}"><span>Sonraki yazı</span>{{ page.next.title }}</a>{% endif %}
+    </nav>
+  </article>
+</main>

@@ -1,0 +1,14 @@
+# Kategori adı: renk (red | blue | amber | purple | green) ve kartta görünen kısa kod
+# Listede olmayan kategoriler mor ve "LOG" koduyla görünür.
+Red Team:
+  color: red
+  code: RED
+Malware Analysis:
+  color: amber
+  code: MAL
+Forensic:
+  color: blue
+  code: DFIR
+Tarih:
+  color: green
+  code: HIST

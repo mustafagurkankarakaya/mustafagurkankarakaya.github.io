@@ -1,0 +1,63 @@
+---
+layout: default
+---
+<main id="content">
+  <section class="hero">
+    <div class="hero-copy">
+<pre class="ascii" aria-hidden="true">███╗   ███╗ ██████╗ ██╗  ██╗
+████╗ ████║██╔════╝ ██║ ██╔╝
+██╔████╔██║██║  ███╗█████╔╝
+██║╚██╔╝██║██║   ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝</pre>
+      <p class="ascii-sub" lang="en" aria-hidden="true">// build {{ site.time | date: "%Y%m%d" }}</p>
+      <p class="prompt" aria-hidden="true"><span class="p">gurkan@soc:~$</span> whoami</p>
+      <h1 class="name">Mustafa Gürkan<br>Karakaya<span class="caret" aria-hidden="true"></span></h1>
+      {% if site.description and site.description != "" %}<p class="lead">{{ site.description }}</p>{% endif %}
+      <div class="cta">
+        <a class="btn primary" href="#posts">Yazıları incele</a>
+        {% if site.social.github %}<a class="btn ghost" href="https://github.com/{{ site.social.github }}">GitHub profilim</a>{% endif %}
+      </div>
+    </div>
+    <div class="term" aria-hidden="true">
+      <div class="term-bar"><span>gurkan@soc: ~</span><span class="live">canlı</span></div>
+      <pre class="term-out" id="term-out"></pre>
+    </div>
+  </section>
+
+  <div class="hexline" aria-hidden="true"><div class="hexline-track">
+    {%- for i in (1..2) -%}
+    <span>0x00  4d 5a 90 00 03 00 00 00  |MZ......|   0x00  7f 45 4c 46 02 01 01 00  |.ELF....|   0x00  25 50 44 46 2d 31 2e 37  |%PDF-1.7|   0x00  50 4b 03 04 14 00 00 00  |PK......|   0x00  89 50 4e 47 0d 0a 1a 0a  |.PNG....|   0x00  1f 8b 08 00 00 00 00 00  |........|</span>
+    {%- endfor -%}
+  </div></div>
+
+  <section class="posts" id="posts" aria-labelledby="posts-title">
+    <div class="posts-head">
+      <h2 id="posts-title">Yazılar</h2>
+      <label class="search">
+        <span class="sr">Yazılarda ara</span>
+        <span class="grep" aria-hidden="true">grep -i</span>
+        <input id="q" type="search" placeholder="ldap, wannacry, volatility" autocomplete="off" spellcheck="false">
+        <kbd>/</kbd>
+      </label>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Kategori filtresi">
+      <button type="button" class="chip" data-cat="" aria-pressed="true">Tümü <span>{{ site.posts.size }}</span></button>
+      {%- for c in site.categories -%}
+      {%- assign cname = c[0] -%}
+      {%- assign col = site.data.categories[cname].color | default: "purple" -%}
+      <button type="button" class="chip" style="--c:var(--{{ col }})" data-cat="{{ cname | escape }}" aria-pressed="false">{{ cname }} <span>{{ c[1].size }}</span></button>
+      {%- endfor -%}
+      <button type="button" class="chip tag-chip" id="tag-chip" hidden></button>
+    </div>
+    <p class="count" id="count" aria-live="polite"></p>
+    <div class="grid" id="grid">
+      {% for post in site.posts %}{% include card.html post=post feat=forloop.first %}{% endfor %}
+    </div>
+    <div class="empty" id="empty" hidden>
+      <p>Bu aramayla eşleşen yazı yok. Başka bir kelime dene ya da filtreleri temizle.</p>
+      <button type="button" class="btn ghost" id="reset">Filtreleri temizle</button>
+    </div>
+  </section>
+</main>
+<script src="{{ '/assets/js/home.js' | relative_url }}" defer></script>

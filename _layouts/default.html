@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="{{ page.lang | default: site.lang }}" data-layout="{{ page.layout }}">
+<head>
+{% include head.html %}
+</head>
+<body>
+<a class="skip" href="#content">İçeriğe geç</a>
+<div class="bg" aria-hidden="true"></div>
+<canvas id="rain" aria-hidden="true"></canvas>
+<div class="boot" id="boot" aria-hidden="true"><pre id="boot-out"></pre></div>
+{% if page.layout == "post" %}<div class="progress" aria-hidden="true"><i></i></div>{% endif %}
+<div class="wrap">
+{% include nav.html %}
+{{ content }}
+{% include footer.html %}
+</div>
+<script src="{{ '/assets/js/site.js' | relative_url }}" defer></script>
+<script src="{{ '/assets/js/fx.js' | relative_url }}" defer></script>
+</body>
+</html>

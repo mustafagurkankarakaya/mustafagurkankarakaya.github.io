@@ -1,0 +1,119 @@
+/* =========================================================
+   Hacker katmanı: main.css'in üstüne biner, içeriğe dokunmaz.
+   Matrix yağmuru, boot ekranı, sistem çubuğu, ASCII banner,
+   hex şeridi, glitch, HUD köşeleri, okuma ilerlemesi.
+   Konami kodu (↑↑↓↓←→←→ B A) kırmızı alarm modunu açar.
+   ========================================================= */
+:root{
+  --g:57,255,136;            /* --glow'un RGB'si, rgba(var(--g),.x) için */
+  --bgrgb:4,8,6;             /* --bg'nin RGB'si */
+  --body:#C4E9CE; --code-ink:#CDEFD6; --code-bg:#020503;
+}
+html.redalert{
+  --bg:#090404; --bg2:#100606; --panel:#150909; --panel2:#1D0D0D;
+  --line:#3C1717; --line2:#5C2323;
+  --ink:#FFDADA; --muted:#D49494; --dim:#9A5B5B;
+  --glow:#FF3B3B; --g:255,59,59; --bgrgb:9,4,4;
+  --body:#EBC4C4; --code-ink:#F0CDCD; --code-bg:#050202;
+  --blue:#FF9B6B; --amber:#FFD166;
+}
+
+/* ---------- Matrix yağmuru ---------- */
+#rain{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.22}
+html[data-layout="page"] #rain{opacity:.1}
+html[data-layout="post"] #rain{opacity:.07}
+
+/* Yavaş akan tarama çubuğu */
+body::before{content:"";position:fixed;left:0;right:0;top:-14vh;height:14vh;z-index:4;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(var(--g),.05),transparent)}
+@media (prefers-reduced-motion:no-preference){
+  body::before{animation:scan 9s linear infinite}
+}
+@keyframes scan{to{transform:translateY(128vh)}}
+
+/* ---------- Sistem çubuğu ---------- */
+.sysbar{display:flex;flex-wrap:wrap;align-items:center;gap:2px 22px;padding:8px 0;font-size:.72rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line);user-select:none}
+.sysbar b{color:var(--muted);font-weight:500}
+.sysbar .on{color:var(--glow);text-shadow:0 0 8px rgba(var(--g),.6)}
+.sysbar .on::before{content:"";display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;
+  background:var(--glow);box-shadow:0 0 8px var(--glow)}
+@media (prefers-reduced-motion:no-preference){.sysbar .on::before{animation:blink 1.6s steps(1) infinite}}
+.sysbar .sp{margin-left:auto}
+.sysbar .lvl{color:var(--glow)}
+html.redalert .sysbar .lvl{color:var(--red);text-shadow:0 0 8px rgba(255,92,92,.7)}
+.bar{border-bottom-style:dashed}
+.links a::before{content:"./";color:var(--dim)}
+.links a:hover::before{color:var(--bg)}
+
+/* ---------- Boot ekranı ---------- */
+.boot{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;justify-content:center;padding:6vh 7vw;
+  background:#000;color:var(--muted);font-size:.9rem;overflow:hidden;cursor:pointer}
+.boot::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px)}
+html.booting .boot,.boot.out{display:flex}
+.boot.out{opacity:0;pointer-events:none;transition:opacity .45s ease}
+.boot pre{margin:0;font:inherit;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+.boot .ok{color:var(--glow)}
+.boot .w{color:var(--amber)}
+.boot .d{color:var(--dim)}
+.boot .grant{display:block;margin-top:.5em;font-family:var(--display);font-size:clamp(2.6rem,8vw,5.4rem);line-height:1;
+  color:var(--glow);text-shadow:0 0 8px rgba(var(--g),.7),0 0 36px rgba(var(--g),.4)}
+.boot .hint{position:absolute;right:7vw;bottom:5vh;z-index:1;font-size:.74rem;color:var(--dim)}
+/* Boot sürerken açılış animasyonları bekler */
+html.booting .prompt,html.booting .name,html.booting .lead,html.booting .cta,html.booting .term{animation-play-state:paused}
+
+/* ---------- ASCII banner + hex şeridi ---------- */
+.ascii{margin:0 0 20px;font:400 clamp(.62rem,1.7vw,1.02rem)/1 var(--mono);letter-spacing:0;color:var(--glow);white-space:pre;
+  overflow:hidden;user-select:none;text-shadow:0 0 6px rgba(var(--g),.4)}
+.ascii-sub{margin:-12px 0 22px;font-size:.72rem;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;user-select:none}
+.hexline{overflow:hidden;margin:-34px 0 30px;font-size:.72rem;line-height:1.7;color:var(--dim);user-select:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.hexline-track{display:inline-flex;white-space:pre}
+.hexline-track span{padding-right:4rem}
+@media (prefers-reduced-motion:no-preference){
+  .hexline-track{animation:marquee 80s linear infinite}
+}
+@keyframes marquee{to{transform:translateX(-50%)}}
+
+/* ---------- HUD köşeleri ---------- */
+.term{position:relative}
+.term::before,.term::after,.toc::before,.toc::after{content:"";position:absolute;width:16px;height:16px;pointer-events:none;
+  border:2px solid var(--glow);filter:drop-shadow(0 0 4px rgba(var(--g),.7))}
+.term::before,.toc::before{top:-8px;left:-8px;border-right:0;border-bottom:0}
+.term::after,.toc::after{bottom:-8px;right:-8px;border-left:0;border-top:0}
+.posts-head h2::before{content:"> ";color:var(--dim)}
+
+/* ---------- Kart ve başlık efektleri ---------- */
+.card-link:hover h3{text-shadow:-1px 0 rgba(255,92,92,.7),1px 0 rgba(79,214,255,.7)}
+.card-link:hover{box-shadow:inset 2px 0 14px -6px var(--c)}
+.post-title:hover{text-shadow:-2px 0 rgba(255,92,92,.7),2px 0 rgba(79,214,255,.7),0 0 18px color-mix(in srgb,var(--c) 45%,transparent)}
+
+/* ---------- Okuma ilerlemesi ---------- */
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:20;pointer-events:none}
+.progress i{display:block;height:100%;background:var(--glow);box-shadow:0 0 12px var(--glow);transform:scaleX(0);transform-origin:0 50%}
+
+/* ---------- Glitch (JS .glitching sınıfını kısa süre ekler) ---------- */
+@keyframes glitch{
+  20%{translate:-3px 0;text-shadow:3px 0 rgba(255,60,60,.85),-3px 0 rgba(60,220,255,.85)}
+  40%{translate:3px -1px;text-shadow:-3px 0 rgba(255,60,60,.85),3px 0 rgba(60,220,255,.85)}
+  60%{translate:-2px 1px;text-shadow:2px 0 rgba(60,220,255,.85),-2px 0 rgba(255,60,60,.85)}
+  80%{translate:2px 0;text-shadow:-2px 0 rgba(255,60,60,.85),2px 0 rgba(60,220,255,.85)}
+}
+@media (prefers-reduced-motion:no-preference){
+  .glitching{animation:glitch .32s steps(1) 1}
+  /* .name zaten "power" animasyonuna sahip; ikisini birlikte tutuyoruz */
+  .name.glitching{animation:power .9s .35s both,glitch .32s steps(1) 1}
+}
+
+/* ---------- Küçük ekran ---------- */
+@media (max-width:640px){
+  .sysbar{gap:2px 14px;font-size:.66rem}
+  .sysbar .hide-sm{display:none}
+  .sysbar .sp{margin-left:0}
+  .links a::before{content:""}
+  .ascii{font-size:.56rem}
+  .hexline{margin:-22px 0 22px}
+  .term::before,.term::after{display:none}
+}

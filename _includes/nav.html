@@ -1,0 +1,19 @@
+<div class="sysbar" aria-hidden="true">
+  <span class="on">çevrimiçi</span>
+  <span class="hide-sm">düğüm <b>mgk-01</b></span>
+  <span lang="en">sid <b id="sys-sid">00000000</b></span>
+  <span class="hide-sm">log <b>{{ site.posts.size }}</b> kayıt</span>
+  <span class="sp">tehdit <b class="lvl" id="sys-lvl">düşük</b></span>
+  <span><b id="sys-clock">--:--:--</b> trt</span>
+</div>
+<header class="bar">
+  <a class="brand" href="{{ '/' | relative_url }}" aria-label="Ana sayfa">
+    <span class="host">root@mgk</span><span class="path">:~#</span><span class="caret" aria-hidden="true"></span>
+  </a>
+  <nav class="links" aria-label="Bağlantılar">
+    <a href="{{ '/#posts' | relative_url }}">yazılar</a>
+    {% if site.social.github %}<a href="https://github.com/{{ site.social.github }}">github</a>{% endif %}
+    {% if site.social.linkedin %}<a href="https://www.linkedin.com/in/{{ site.social.linkedin }}">linkedin</a>{% endif %}
+    <a href="{{ '/feed.xml' | relative_url }}">rss</a>
+  </nav>
+</header>

@@ -1,0 +1,5 @@
+<footer class="site-foot">
+  <span>© {{ 'now' | date: "%Y" }} {{ site.author.name }}</span>
+  {% if site.social.email %}<a href="mailto:{{ site.social.email }}">{{ site.social.email }}</a>{% endif %}
+  <span class="eof" aria-hidden="true">[EOF]</span>
+</footer>

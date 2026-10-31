@@ -1,0 +1,27 @@
+{%- assign p = include.post -%}
+{%- assign cat = p.categories | first | default: "Genel" -%}
+{%- assign meta = site.data.categories[cat] -%}
+{%- assign col = meta.color | default: "purple" -%}
+{%- assign code = meta.code | default: "LOG" -%}
+{%- assign cover = p.image.path | default: p.image -%}
+{%- if cover and p.media_subpath -%}{%- assign cover = p.media_subpath | append: "/" | append: cover | replace: "//", "/" -%}{%- endif -%}
+{%- assign excerpt = p.description | default: p.excerpt | strip_html | normalize_whitespace | truncate: 180 -%}
+{%- assign tagstr = p.tags | join: " " -%}
+{%- capture searchtext -%}{{ p.title }} {{ excerpt }} {{ cat }} {{ tagstr }}{%- endcapture -%}
+<article class="card{% if include.feat %} feat{% endif %}{% if cover %} has-art{% endif %}" style="--c:var(--{{ col }})"
+  data-cat="{{ cat | escape }}" data-tags="{{ p.tags | join: '|' | escape }}"
+  data-text="{{ searchtext | escape }}">
+  <a class="card-link" href="{{ p.url | relative_url }}">
+    <div class="card-meta">
+      <time datetime="{{ p.date | date: '%Y-%m-%d' }}">{{ p.date | date: "%Y-%m-%d" }}</time>
+      <span class="sev" title="{{ cat | escape }}">[{{ code }}]</span>
+      <span class="cat">{{ cat }}</span>
+    </div>
+    <div class="card-body">
+      <h3>{{ p.title }}</h3>
+      {% if excerpt != "" %}<p>{{ excerpt }}</p>{% endif %}
+      {% if p.tags.size > 0 %}<div class="card-tags">{% for t in p.tags limit: 4 %}<span>#{{ t }}</span>{% endfor %}</div>{% endif %}
+    </div>
+    {% if cover %}<div class="card-art"><img src="{{ cover | relative_url }}" alt="" loading="lazy"></div>{% endif %}
+  </a>
+</article>
