@@ -1,5 +1,5 @@
 ---
-title: "Tuoni C2 kurulumu ve Splunk ile IOC'siz davranışsal tespit"
+title: "Tuoni C2 kurulumu ve Splunk ile davranışsal tespit"
 date: 2026-11-08 09:00:00 +0300
 categories: [Red Team]
 tags: [tuoni, c2, splunk, davranışsal-tespit, windows-event-log, token-privilege, mitre-attack, dfir]
