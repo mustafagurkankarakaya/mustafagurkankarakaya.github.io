@@ -9,9 +9,9 @@ image:
   alt: DC01 üzerindeki Tuoni ajan oturumu ve PID 6080
 ---
 
-Bir beacon'ın dosya adı ve bağlandığı IP biliniyorsa, onu Splunk'ta bulmak bir tespit değil, basit bir arama işlemidir. `calclistlogic.exe` ve `192.168.86.128` yazılır, ilgili olaylar listelenir. Ancak gerçek bir vakada bu iki bilgi analiste önceden verilmez; çoğu zaman olay gerçekleştikten sonra öğrenilir.
+Bu yazıda bir Tuoni C2 ajanını iki makineli bir laboratuvarda çalıştırıp davranışını Windows Security olayları üzerinden Splunk'ta tespit ediyoruz. Hedef, ajanın dosya adına veya bağlandığı IP adresine dayanmadan, yalnızca sürecin bıraktığı davranış izinden yola çıkan bir korelasyon kuralı yazmaktır.
 
-Bu nedenle deneyi tersten kurguladık: dosya adını ve IP'yi aramadan tamamen çıkardığımızda, Windows bu ajanı yalnızca **davranışıyla** gösterebilir mi? Süreci üç kez çalıştırdık ve üçünde de aynı sıra ortaya çıktı. Kullanıcı profilinin altından başlayan bir süreç kısa bir pencerede dokuz token ayrıcalığını etkinleştirdi ve bunu yapar yapmaz, yedi ila dokuz saniye içinde Kali'ye giden bir TCP bağlantısı açtı. Tespit ettiğimiz şey bir imza değil, bu davranış sırasıydı.
+Deneyi üç kez tekrarladık ve üç çalıştırmada da aynı davranış sırası gözlendi: kullanıcı profilinin altından başlayan süreç kısa bir pencerede dokuz token ayrıcalığını etkinleştirdi ve ardından yedi ila dokuz saniye içinde Kali'ye giden bir TCP bağlantısı açtı. Kural bir imzaya değil, bu davranış sırasına dayanır.
 
 ## Laboratuvar topolojisi
 
