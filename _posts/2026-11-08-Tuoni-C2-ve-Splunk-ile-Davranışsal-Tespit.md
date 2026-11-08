@@ -1,7 +1,7 @@
 ---
 title: "Tuoni C2 kurulumu ve Splunk ile IOC'siz davranışsal tespit"
-date: 2026-11-08 20:30:00 +0300
-categories: [Blue Team]
+date: 2026-11-08 09:00:00 +0300
+categories: [Red Team]
 tags: [tuoni, c2, splunk, davranışsal-tespit, windows-event-log, token-privilege, mitre-attack, dfir]
 description: "Tuoni C2'yi iki makineli bir laboratuvarda ayağa kaldırdık, Windows ajanını çalıştırdık ve beacon'ın dosya adını da IP'sini de aramaya hiç yazmadan, yalnızca 4688/4703/5156 olaylarının davranış sırasından tespit ettik. Üç çalıştırma, üç eşleşme."
 image:
