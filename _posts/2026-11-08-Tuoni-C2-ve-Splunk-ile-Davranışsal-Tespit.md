@@ -230,6 +230,6 @@ Laboratuvar senaryosunun değeri, saldırıyı bizzat kurup telemetriyi doğruda
 
 ---
 
-*Komutlar kendi laboratuvarınızda denenirken IP adreslerini, `index` ve alan adlarını kendi ortamınıza göre uyarlamanız gerekir. Görüş ve itirazlara açığız.*
+*Komutlar kendi laboratuvarınızda denenirken IP adreslerini, `index` ve alan adlarını kendi ortamınıza göre uyarlamanız gerekir.*
 
 [Tuoni kurulum dokümantasyonu](https://docs.tuoni.io/HowToUse/SettingUpTheC2.html) · [Tuoni HTTP ajanı örneği](https://docs.tuoni.io/HowToUse/UseCases/SimpleHttpAgent.html)
